@@ -1,0 +1,14 @@
+{
+  "version": "0.2.1",
+  "defaults": {},
+  "configurations": [
+    {
+      "type": "default",
+      "project": "CMakeLists.txt",
+      "projectTarget": "tesseract.exe (tesseract\\tesseract.exe)",
+      "name": "tesseract.exe (tesseract\\tesseract.exe)",
+      "currentDir": "${workspaceRoot}",
+      "args": [ "-urun", "-glog.txt" ]
+    }
+  ]
+}

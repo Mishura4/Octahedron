@@ -1,0 +1,18 @@
+[submodule "dep/SDL"]
+	path = dep/SDL
+	url = git@github.com:libsdl-org/SDL.git
+[submodule "dep/SDL_mixer"]
+	path = dep/SDL_mixer
+	url = git@github.com:libsdl-org/SDL_mixer.git
+[submodule "dep/zlib"]
+	path = dep/zlib
+	url = git@github.com:madler/zlib.git
+[submodule "dep/SDL_image"]
+	path = dep/SDL_image
+	url = git@github.com:libsdl-org/SDL_image.git
+[submodule "dep/opus"]
+	path = dep/opus
+	url = git@github.com:xiph/opus.git
+[submodule "dep/enet"]
+	path = dep/enet
+	url = git@github.com:lsalzman/enet.git
