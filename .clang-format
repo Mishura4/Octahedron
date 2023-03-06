@@ -1,0 +1,100 @@
+﻿---
+Language: Cpp
+AlignConsecutiveMacros:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: false
+AlignConsecutiveAssignments:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: true
+AlignConsecutiveDeclarations: 'false'
+AlignEscapedNewlines: Right
+AlignOperands: 'DontAlign'
+AlignTrailingComments: 'true'
+AllowAllArgumentsOnNextLine: 'false'
+AllowAllConstructorInitializersOnNextLine: 'false'
+AllowAllParametersOfDeclarationOnNextLine: 'false'
+AllowShortBlocksOnASingleLine: 'false'
+AllowShortCaseLabelsOnASingleLine: 'false'
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: All
+AllowShortLoopsOnASingleLine: 'false'
+AlwaysBreakAfterReturnType: None
+AlwaysBreakBeforeMultilineStrings: 'false'
+AlwaysBreakTemplateDeclarations: 'Yes'
+BinPackArguments: 'false'
+BinPackParameters: 'false'
+BreakAfterJavaFieldAnnotations: 'true'
+# BreakBeforeBraces: Allman
+BreakBeforeTernaryOperators: 'false'
+BreakConstructorInitializers: AfterColon
+BreakInheritanceList: AfterColon
+BreakStringLiterals: 'true'
+ColumnLimit: '100'
+CompactNamespaces: 'false'
+Cpp11BracedListStyle: 'true'
+DerivePointerAlignment: 'false'
+FixNamespaceComments: 'true'
+# IncludeBlocks: Regroup
+IndentCaseLabels: 'true'
+IndentPPDirectives: AfterHash
+IndentWidth: '2'
+IndentWrappedFunctionNames: 'false'
+NamespaceIndentation: All
+PointerAlignment: Right
+ReflowComments: 'false'
+# SortIncludes: 'true'
+SortUsingDeclarations: 'true'
+SpaceAfterCStyleCast: 'true'
+SpaceAfterLogicalNot: 'false'
+SpaceAfterTemplateKeyword: 'true'
+SpaceBeforeAssignmentOperators: 'true'
+SpaceBeforeCpp11BracedList: 'false'
+SpaceBeforeCtorInitializerColon: 'true'
+SpaceBeforeInheritanceColon: 'true'
+SpaceBeforeParens: ControlStatements
+SpaceBeforeRangeBasedForLoopColon: 'true'
+SpaceInEmptyParentheses: 'false'
+SpacesBeforeTrailingComments: '2'
+SpacesInAngles: 'false'
+SpacesInCStyleCastParentheses: 'false'
+SpacesInContainerLiterals: 'false'
+SpacesInParentheses: 'false'
+SpacesInSquareBrackets: 'false'
+Standard: c++20
+TabWidth: '8'
+UseTab: Never
+AlignOperands: AlignAfterOperator
+AlignAfterOpenBracket: BlockIndent
+BreakBeforeBraces: Allman
+
+ContinuationIndentWidth: 2
+AccessModifierOffset: -2
+BreakBeforeBinaryOperators: None
+AlignArrayOfStructures: Left
+AlignConsecutiveBitFields:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: false
+BreakBeforeConceptDeclarations: Always
+EmptyLineBeforeAccessModifier: Always 
+LambdaBodyIndentation: Signature
+PackConstructorInitializers: NextLine 
+SeparateDefinitionBlocks: Always
+RequiresClausePosition: OwnLine
+IndentRequiresClause: false
+MaxEmptyLinesToKeep: 2
+ObjCBlockIndentWidth: 2
+IndentAccessModifiers: true
+
+RequiresExpressionIndentation: OuterScope
+
+SeparateDefinitionBlocks: SDS_Always
+
+IndentRequiresClause: false
+InsertNewlineAtEOF: true
+LineEnding: LE_LF 
+
+...
