@@ -22,3 +22,6 @@
 	path = dep/enet
 	url = git@github.com:lsalzman/enet.git
 	ignore = dirty
+[submodule "dep/fmt"]
+	path = dep/fmt
+	url = git@github.com:fmtlib/fmt.git

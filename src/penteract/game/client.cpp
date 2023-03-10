@@ -2086,7 +2086,7 @@ namespace game
                 delete map;
                 if(load_world(mname, oldname[0] ? oldname : NULL))
                     entities::spawnitems(true);
-                remove(findfile(fname, "rb"));
+                g_engine->fileSystem().remove(fname);
                 break;
             }
         }
@@ -2190,8 +2190,9 @@ namespace game
             }
             delete map;
         }
-        else conoutf(CON_ERROR, "could not read map");
-        remove(findfile(fname, "rb"));
+        else
+            conoutf(CON_ERROR, "could not read map");
+        g_engine->fileSystem().remove(fname);
     }
     COMMAND(sendmap, "");
 

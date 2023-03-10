@@ -5,10 +5,14 @@
     {
       "type": "default",
       "project": "CMakeLists.txt",
-      "projectTarget": "tesseract.exe (tesseract\\tesseract.exe)",
-      "name": "tesseract.exe (tesseract\\tesseract.exe)",
+      "projectTarget": "penteract.exe (penteract\\penteract.exe)",
+      "name": "penteract.exe (penteract\\penteract.exe)",
       "currentDir": "${workspaceRoot}",
-      "args": [ "-urun", "-glog.txt" ]
+      "args": [
+        "-urun",
+        "-glog.txt",
+        "--packagedirs \"~/data/ media/\""
+      ]
     }
   ]
 }

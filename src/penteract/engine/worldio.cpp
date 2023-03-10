@@ -178,10 +178,7 @@ COMMAND(mapcfgname, "");
 
 void backup(const char *name, const char *backupname)
 {
-    string backupfile;
-    copystring(backupfile, findfile(backupname, "wb"));
-    remove(backupfile);
-    rename(findfile(name, "wb"), backupfile);
+    g_engine->fileSystem().rename(name, backupname);
 }
 
 enum { OCTSAV_CHILDREN = 0, OCTSAV_EMPTY, OCTSAV_SOLID, OCTSAV_NORMAL };

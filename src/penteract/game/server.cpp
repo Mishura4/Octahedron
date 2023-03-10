@@ -1135,11 +1135,8 @@ namespace server
         copystring(buf, demodir);
         int dirlen = strlen(buf);
         if(buf[dirlen] != '/' && buf[dirlen] != '\\' && dirlen+1 < (int)sizeof(buf)) { buf[dirlen++] = '/'; buf[dirlen] = '\0'; }
-        if(init)
-        {
-            const char *dir = findfile(buf, "w");
-            if(!fileexists(dir, "w")) createdir(dir);
-        }
+        if (init)
+            g_engine->fileSystem().createPath(buf);
         concatstring(buf, file);
         return buf;
     }
@@ -2477,7 +2474,7 @@ namespace server
     };
 
     VAR(modifiedmapspectator, 0, 1, 2);
- 
+
     void checkmaps(int req = -1)
     {
         if(m_edit || !smapname[0]) return;
@@ -2536,7 +2533,7 @@ namespace server
     {
         return !ci->local && ci->warned && modifiedmapspectator && (mcrc || modifiedmapspectator > 1);
     }
- 
+
     void unspectate(clientinfo *ci)
     {
         if(shouldspectate(ci)) return;
@@ -3628,12 +3625,12 @@ namespace server
                 loopi(size-1) getint(p);
                 if(p.remaining() < 2) { disconnect_client(sender, DISC_MSGERR); return; }
                 int extra = lilswap(*(const ushort *)p.pad(2));
-                if(p.remaining() < extra) { disconnect_client(sender, DISC_MSGERR); return; }                
-                p.pad(extra); 
+                if(p.remaining() < extra) { disconnect_client(sender, DISC_MSGERR); return; }
+                p.pad(extra);
                 if(ci && ci->state.state!=CS_SPECTATOR) QUEUE_MSG;
                 break;
             }
-  
+
             case N_UNDO:
             case N_REDO:
             {
@@ -3653,7 +3650,7 @@ namespace server
                 sendpacket(-1, 1, q.finalize(), ci->clientnum);
                 break;
             }
- 
+
             case N_SERVCMD:
                 getstring(text, p);
                 break;

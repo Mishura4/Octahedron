@@ -181,8 +181,7 @@ struct aviwriter
         {
             int dirlen = strlen(filename);
             if(filename[dirlen] != '/' && filename[dirlen] != '\\' && dirlen+1 < (int)sizeof(filename)) { filename[dirlen++] = '/'; filename[dirlen] = '\0'; }
-            const char *dir = findfile(filename, "w");
-            if(!fileexists(dir, "w")) createdir(dir);
+            g_engine->fileSystem().createPath(filename);
         }
 
         concatstring(filename, name);

@@ -1,5 +1,9 @@
 // the interface the game uses to access the engine
 
+#include "Engine/Engine.h"
+
+using Octahedron::g_engine;
+
 extern int curtime;                     // current frame time
 extern int lastmillis;                  // last time
 extern int elapsedtime;                 // elapsed frame time

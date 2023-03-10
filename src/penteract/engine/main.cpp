@@ -2,6 +2,9 @@
 
 #include "engine.h"
 
+#include "Octahedron.h"
+#include "Engine/Engine.h"
+
 #ifdef SDL_VIDEO_DRIVER_X11
 #include "SDL_syswm.h"
 #endif
@@ -1095,35 +1098,18 @@ int main(int argc, char **argv)
     #endif
     #endif
     #endif
-
-    setlogfile(NULL);
+    Octahedron::Engine engine(argc, argv);
 
     int dedicated = 0;
     char *load = NULL, *initscript = NULL;
 
     initing = INIT_RESET;
-    // set home dir first
-    for(int i = 1; i<argc; i++) if(argv[i][0]=='-' && argv[i][1] == 'u') { sethomedir(&argv[i][2]); break; }
-    // set log after home dir, but before anything else
-    for(int i = 1; i<argc; i++) if(argv[i][0]=='-' && argv[i][1] == 'g')
-    {
-        const char *file = argv[i][2] ? &argv[i][2] : "log.txt";
-        setlogfile(file);
-        logoutf("Setting log file: %s", file);
-        break;
-    }
     execfile("config/init.cfg", false);
     for(int i = 1; i<argc; i++)
     {
         if(argv[i][0]=='-') switch(argv[i][1])
         {
             case 'u': if(homedir[0]) logoutf("Using home directory: %s", homedir); break;
-            case 'k':
-            {
-                const char *dir = addpackagedir(&argv[i][2]);
-                if(dir) logoutf("Adding package directory: %s", dir);
-                break;
-            }
             case 'g': break;
             case 'd': dedicated = atoi(&argv[i][2]); if(dedicated<=0) dedicated = 2; break;
             case 'w': scr_w = clamp(atoi(&argv[i][2]), SCR_MINW, SCR_MAXW); if(!findarg(argc, argv, "-h")) scr_h = -1; break;
@@ -1241,7 +1227,16 @@ int main(int argc, char **argv)
 
     logoutf("init: mainloop");
 
-    if(execfile("once.cfg", false)) remove(findfile("once.cfg", "rb"));
+    using SearchMode = Octahedron::FileSystem::SearchMode;
+
+    auto path = g_engine->fileSystem().findFile("once.cfg");
+    if (path)
+    {
+        if (execfile(path->string().c_str(), false))
+            remove(path->string().c_str());
+        else
+            Octahedron::log(Octahedron::LogLevel::WARN, "failed to execute {}", *path);
+    }
 
     if(load)
     {

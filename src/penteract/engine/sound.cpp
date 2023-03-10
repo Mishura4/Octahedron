@@ -263,7 +263,8 @@ Mix_Music *loadmusic(const char *name)
         if(!musicrw) DELETEP(musicstream);
     }
     if(musicrw) music = Mix_LoadMUSType_RW(musicrw, MUS_NONE, 0);
-    else music = Mix_LoadMUS(findfile(name, "rb"));
+    else if (auto path = g_engine->fileSystem().findFile(name); path)
+        music = Mix_LoadMUS(path->string().c_str()); /*findfile(name, "rb")*/
     if(!music)
     {
         if(musicrw) { SDL_FreeRW(musicrw); musicrw = NULL; }
@@ -314,7 +315,11 @@ static Mix_Chunk *loadwav(const char *name)
         }
         delete z;
     }
-    if(!c) c = Mix_LoadWAV(findfile(name, "rb"));
+    if (!c)
+    {
+        if (auto path = g_engine->fileSystem().findFile(name); path)
+          c = Mix_LoadWAV(path->string().c_str()); /*findfile(name, "rb")*/
+    }
     return c;
 }
 

@@ -25,18 +25,6 @@ FILE *getlogfile()
 #endif
 }
 
-void setlogfile(const char *fname)
-{
-    closelogfile();
-    if(fname && fname[0])
-    {
-        fname = findfile(fname, "w");
-        if(fname) logfile = fopen(fname, "w");
-    }
-    FILE *f = getlogfile();
-    if(f) setvbuf(f, NULL, _IOLBF, BUFSIZ);
-}
-
 void logoutf(const char *fmt, ...)
 {
     va_list args;
@@ -48,13 +36,13 @@ void logoutf(const char *fmt, ...)
 
 static void writelog(FILE *file, const char *buf)
 {
-    static uchar ubuf[512];
+    static char ubuf[512];
     size_t len = strlen(buf), carry = 0;
     while(carry < len)
     {
-        size_t numu = encodeutf8(ubuf, sizeof(ubuf)-1, &((const uchar *)buf)[carry], len - carry, &carry);
+        size_t numu = encodeutf8((uchar *)ubuf, sizeof(ubuf)-1, &((const uchar *)buf)[carry], len - carry, &carry);
         if(carry >= len) ubuf[numu++] = '\n';
-        fwrite(ubuf, 1, numu, file);
+        g_engine->log(Octahedron::LogLevel::BASIC, "{}", std::string_view{ubuf, len});
     }
 }
 
@@ -978,13 +966,13 @@ void logoutfv(const char *fmt, va_list args)
     {
         logline &line = loglines.add();
         vformatstring(line.buf, fmt, args, sizeof(line.buf));
-        if(logfile) writelog(logfile, line.buf);
+        writelog(logfile, line.buf);
         line.len = min(strlen(line.buf), sizeof(line.buf)-2);
         line.buf[line.len++] = '\n';
         line.buf[line.len] = '\0';
         if(outhandle) writeline(line);
     }
-    else if(logfile) writelogv(logfile, fmt, args);
+    else writelogv(logfile, fmt, args);
 }
 
 #else

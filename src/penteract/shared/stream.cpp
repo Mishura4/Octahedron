@@ -1,5 +1,7 @@
 #include "cube.h"
 
+#include "Engine/Engine.h"
+
 ///////////////////////////// console ////////////////////////
 
 void conoutf(const char *fmt, ...)
@@ -292,7 +294,6 @@ struct packagedir
     char *dir, *filter;
     size_t dirlen, filterlen;
 };
-vector<packagedir> packagedirs;
 
 char *makerelpath(const char *dir, const char *file, const char *prefix, const char *cmd)
 {
@@ -422,92 +423,6 @@ size_t fixpackagedir(char *dir)
     return len;
 }
 
-bool subhomedir(char *dst, int len, const char *src)
-{
-    const char *sub = strstr(src, "$HOME");
-    if(!sub) sub = strchr(src, '~');
-    if(sub && sub-src < len)
-    {
-#ifdef WIN32
-        char home[MAX_PATH+1];
-        home[0] = '\0';
-        if(SHGetFolderPath(NULL, CSIDL_PERSONAL, NULL, 0, home) != S_OK || !home[0]) return false;
-#else
-        const char *home = getenv("HOME");
-        if(!home || !home[0]) return false;
-#endif
-        dst[sub-src] = '\0';
-        concatstring(dst, home, len);
-        concatstring(dst, sub+(*sub == '~' ? 1 : strlen("$HOME")), len);
-    }
-    return true;
-}
-
-const char *sethomedir(const char *dir)
-{
-    string pdir;
-    copystring(pdir, dir);
-    if(!subhomedir(pdir, sizeof(pdir), dir) || !fixpackagedir(pdir)) return NULL;
-    copystring(homedir, pdir);
-    return homedir;
-}
-
-const char *addpackagedir(const char *dir)
-{
-    string pdir;
-    copystring(pdir, dir);
-    if(!subhomedir(pdir, sizeof(pdir), dir) || !fixpackagedir(pdir)) return NULL;
-    char *filter = pdir;
-    for(;;)
-    {
-        static int len = strlen("media");
-        filter = strstr(filter, "media");
-        if(!filter) break;
-        if(filter > pdir && filter[-1] == PATHDIV && filter[len] == PATHDIV) break;
-        filter += len;
-    }
-    packagedir &pf = packagedirs.add();
-    pf.dir = filter ? newstring(pdir, filter-pdir) : newstring(pdir);
-    pf.dirlen = filter ? filter-pdir : strlen(pdir);
-    pf.filter = filter ? newstring(filter) : NULL;
-    pf.filterlen = filter ? strlen(filter) : 0;
-    return pf.dir;
-}
-
-const char *findfile(const char *filename, const char *mode)
-{
-    static string s;
-    if(homedir[0])
-    {
-        formatstring(s, "%s%s", homedir, filename);
-        if(fileexists(s, mode)) return s;
-        if(mode[0]=='w' || mode[0]=='a')
-        {
-            string dirs;
-            copystring(dirs, s);
-            char *dir = strchr(dirs[0]==PATHDIV ? dirs+1 : dirs, PATHDIV);
-            while(dir)
-            {
-                *dir = '\0';
-                if(!fileexists(dirs, "d") && !createdir(dirs)) return s;
-                *dir = PATHDIV;
-                dir = strchr(dir+1, PATHDIV);
-            }
-            return s;
-        }
-    }
-    if(mode[0]=='w' || mode[0]=='a') return filename;
-    loopv(packagedirs)
-    {
-        packagedir &pf = packagedirs[i];
-        if(pf.filter && strncmp(filename, pf.filter, pf.filterlen)) continue;
-        formatstring(s, "%s%s", pf.dir, filename);
-        if(fileexists(s, mode)) return s;
-    }
-    if(mode[0]=='e') return NULL;
-    return filename;
-}
-
 bool listdir(const char *dirname, bool rel, const char *ext, vector<char *> &files)
 {
     size_t extsize = ext ? strlen(ext)+1 : 0;
@@ -575,12 +490,12 @@ int listfiles(const char *dir, const char *ext, vector<char *> &files)
         formatstring(s, "%s%s", homedir, dirname);
         if(listdir(s, false, ext, files)) dirs++;
     }
-    loopv(packagedirs)
+    for (const auto &path : g_engine->fileSystem().packageDirs())
     {
-        packagedir &pf = packagedirs[i];
+        /* packagedir &pf = packagedirs[i];
         if(pf.filter && strncmp(dirname, pf.filter, dirlen == pf.filterlen-1 ? dirlen : pf.filterlen))
-            continue;
-        formatstring(s, "%s%s", pf.dir, dirname);
+            continue;*/
+        formatstring(s, "%s%s", path.string().c_str(), dirname);
         if(listdir(s, false, ext, files)) dirs++;
     }
 #ifndef STANDALONE
@@ -1223,10 +1138,19 @@ struct utf8stream : stream
 
 stream *openrawfile(const char *filename, const char *mode)
 {
-    const char *found = findfile(filename, mode);
+    using enum Octahedron::FileSystem::SearchMode;
+    using SearchMode = Octahedron::FileSystem::SearchMode;
+
+    auto oh_mode = std::string_view(mode).find('w') != std::string_view::npos
+    ? CREATE : DEFAULT;
+    auto found   = g_engine->fileSystem().findFile(filename, oh_mode);
     if(!found) return NULL;
     filestream *file = new filestream;
-    if(!file->open(found, mode)) { delete file; return NULL; }
+    if (!file->open(found->string().c_str(), mode))
+    {
+      delete file;
+      return NULL;
+    }
     return file;
 }
 
@@ -1241,9 +1165,13 @@ stream *openfile(const char *filename, const char *mode)
 
 stream *opentempfile(const char *name, const char *mode)
 {
-    const char *found = findfile(name, mode);
+    using enum Octahedron::FileSystem::SearchMode;
+    using SearchMode = Octahedron::FileSystem::SearchMode;
+
+    auto oh_mode = std::string_view(mode).find('w') != std::string_view::npos ? CREATE : DEFAULT;
+    auto found   = g_engine->fileSystem().findFile(name, oh_mode);
     filestream *file = new filestream;
-    if(!file->opentemp(found ? found : name, mode)) { delete file; return NULL; }
+    if(!file->opentemp(found ? found->string().c_str() : name, mode)) { delete file; return NULL; }
     return file;
 }
 

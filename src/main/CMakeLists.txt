@@ -1,4 +1,4 @@
-add_executable(Octahedron)
+add_library(Octahedron)
 
 source_group(
     TREE
@@ -21,7 +21,21 @@ set_target_properties(Octahedron
 
 target_compile_features(Octahedron PUBLIC cxx_std_20)
 
+if (MSVC)
+    target_compile_options(Octahedron PUBLIC /Zc:preprocessor)
+    target_compile_definitions(Octahedron
+        PUBLIC
+            _WIN32_WINNT=_WIN32_WINNT_WIN7
+            WINVER=_WIN32_WINNT_WIN7)
+endif()
+
+target_include_directories(Octahedron PUBLIC ${CMAKE_CURRENT_LIST_DIR})
+target_link_libraries(Octahedron PUBLIC fmt)
+
 target_sources(Octahedron
     PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}/stub.cpp
-)
+        ${CMAKE_CURRENT_LIST_DIR}/Octahedron.h
+        ${CMAKE_CURRENT_LIST_DIR}/Tools/ProtectedPtr.h
+        ${CMAKE_CURRENT_LIST_DIR}/Engine/Engine.cpp
+    PUBLIC
+ "Tools/Math.h" "Tools/StringLiteral.h" "Tools/Exception.h" "Engine/Engine.h" "Tools/ManagedResource.h" "IO/Logger.h" "Engine/FileSystem.h" "Engine/FileSystem.cpp" "Octahedron.cpp" "Base.h")

@@ -91,10 +91,8 @@ IndentAccessModifiers: true
 
 RequiresExpressionIndentation: OuterScope
 
-SeparateDefinitionBlocks: SDS_Always
+SeparateDefinitionBlocks: Always
 
 IndentRequiresClause: false
-InsertNewlineAtEOF: true
-LineEnding: LE_LF 
 
 ...

@@ -109,7 +109,7 @@ set(GAME_HEADERS
     ${CMAKE_CURRENT_LIST_DIR}/game/extinfo.h
     ${CMAKE_CURRENT_LIST_DIR}/game/game.h
 )
-add_executable(tesseract
+add_executable(penteract
     WIN32
     ${ENGINE_HEADERS}
     ${SHARED_HEADERS}
@@ -131,33 +131,34 @@ source_group(TREE ${CMAKE_CURRENT_LIST_DIR}
         ${GAME_SOURCES}
 )
 
-set_target_properties(tesseract
+set_target_properties(penteract
     PROPERTIES
         LINKER_LANGUAGE CXX
 )
 
 find_package(OpenGL REQUIRED)
 
-target_compile_features(tesseract PUBLIC cxx_std_20)
+target_compile_features(penteract PUBLIC cxx_std_20)
 
-target_include_directories(tesseract PRIVATE ${CMAKE_CURRENT_LIST_DIR}/engine)
-target_include_directories(tesseract PRIVATE ${CMAKE_CURRENT_LIST_DIR}/game)
-target_include_directories(tesseract PRIVATE ${CMAKE_CURRENT_LIST_DIR}/shared)
+target_include_directories(penteract PRIVATE ${CMAKE_CURRENT_LIST_DIR}/engine)
+target_include_directories(penteract PRIVATE ${CMAKE_CURRENT_LIST_DIR}/game)
+target_include_directories(penteract PRIVATE ${CMAKE_CURRENT_LIST_DIR}/shared)
 
 # target_link_libraries(Octahedron PUBLIC fmt)
-target_link_libraries(tesseract PRIVATE enet)
-target_link_libraries(tesseract PRIVATE SDL2-static)
-target_link_libraries(tesseract PRIVATE SDL2_image)
-target_link_libraries(tesseract PRIVATE SDL2_mixer)
-target_link_libraries(tesseract PUBLIC zlib)
-target_link_libraries(tesseract PRIVATE ${OPENGL_LIBRARIES})
+target_link_libraries(penteract PUBLIC Octahedron)
+target_link_libraries(penteract PUBLIC enet)
+target_link_libraries(penteract PUBLIC SDL2-static)
+target_link_libraries(penteract PUBLIC SDL2_image)
+target_link_libraries(penteract PUBLIC SDL2_mixer)
+target_link_libraries(penteract PUBLIC zlib)
+target_link_libraries(penteract PUBLIC ${OPENGL_LIBRARIES})
 
-add_custom_command(TARGET tesseract POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_RUNTIME_DLLS:tesseract>" "$<TARGET_FILE_DIR:tesseract>"
+add_custom_command(TARGET penteract POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_RUNTIME_DLLS:penteract>" "$<TARGET_FILE_DIR:penteract>"
   COMMAND_EXPAND_LISTS
 )
 
-set_target_properties(tesseract
+set_target_properties(penteract
     PROPERTIES
         VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
         VS_DEBUGGER_COMMAND_ARGUMENTS "-urun -glog.txt"

@@ -292,8 +292,10 @@ bool addzip(const char *name, const char *mount = NULL, const char *strip = NULL
         return true;
     }
 
-    FILE *f = fopen(findfile(pname, "rb"), "rb");
-    if(!f)
+    auto path = g_engine->fileSystem().findFile(pname);
+    FILE *f;
+
+    if (!path || !(f = fopen(path->string().c_str(), "rb")))
     {
         conoutf(CON_ERROR, "could not open file %s", pname);
         return false;
