@@ -7,9 +7,9 @@
       "project": "CMakeLists.txt",
       "projectTarget": "penteract.exe (penteract\\penteract.exe)",
       "name": "penteract.exe (penteract\\penteract.exe)",
-      "currentDir": "${workspaceRoot}",
+      "currentDir": "${workspaceRoot}\run",
       "args": [
-        "-urun",
+        "-usave",
         "-glog.txt",
         "--packagedirs \"~/data/ media/\""
       ]
