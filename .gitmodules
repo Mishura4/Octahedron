@@ -25,3 +25,6 @@
 [submodule "dep/fmt"]
 	path = dep/fmt
 	url = git@github.com:fmtlib/fmt.git
+[submodule "dep/zstr"]
+	path = dep/zstr
+	url = https://github.com/mateidavid/zstr.git

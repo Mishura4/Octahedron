@@ -10,6 +10,7 @@ add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/SDL_image)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/SDL_mixer)
 
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/zlib "${CMAKE_CURRENT_BINARY_DIR}/zlib_build")
+set(ZSTR_DIR ${CMAKE_CURRENT_LIST_DIR}/zstr/src PARENT_SCOPE)
 
 message(STATUS ${CMAKE_CURRENT_BINARY_DIR})
 

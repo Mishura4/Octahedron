@@ -30,6 +30,7 @@ if (MSVC)
 endif()
 
 target_include_directories(Octahedron PUBLIC ${CMAKE_CURRENT_LIST_DIR})
+target_include_directories(Octahedron PUBLIC ${ZSTR_DIR})
 target_link_libraries(Octahedron PUBLIC fmt)
 
 target_sources(Octahedron
