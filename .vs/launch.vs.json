@@ -7,7 +7,7 @@
       "project": "CMakeLists.txt",
       "projectTarget": "penteract.exe (penteract\\penteract.exe)",
       "name": "penteract.exe (penteract\\penteract.exe)",
-      "currentDir": "${workspaceRoot}\run",
+      "currentDir": "${workspaceRoot}\\run",
       "args": [
         "-usave",
         "-glog.txt",

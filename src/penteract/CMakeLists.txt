@@ -153,6 +153,10 @@ target_link_libraries(penteract PUBLIC SDL2_mixer)
 target_link_libraries(penteract PUBLIC zlib)
 target_link_libraries(penteract PUBLIC ${OPENGL_LIBRARIES})
 
+if(WIN32)
+  target_link_libraries(penteract PUBLIC wsock32 ws2_32)
+endif()
+
 add_custom_command(TARGET penteract POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_RUNTIME_DLLS:penteract>" "$<TARGET_FILE_DIR:penteract>"
   COMMAND_EXPAND_LISTS
