@@ -280,7 +280,8 @@ static void fixzipname(char (&pname)[N])
 
 bool addzip(const char *name, const char *mount = NULL, const char *strip = NULL)
 {
-    string pname;
+  Octahedron::log(Octahedron::LogLevel::ERROR, "addzip not implemented");
+    /*string pname;
     copystring(pname, name);
     path(pname);
     fixzipname(pname);
@@ -315,7 +316,7 @@ bool addzip(const char *name, const char *mount = NULL, const char *strip = NULL
     mountzip(*arch, files, mount, strip);
     archives.add(arch);
 
-    conoutf("added zip %s", pname);
+    conoutf("added zip %s", pname);*/
     return true;
 }
 

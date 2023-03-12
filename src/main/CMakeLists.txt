@@ -31,6 +31,9 @@ endif()
 
 target_include_directories(Octahedron PUBLIC ${CMAKE_CURRENT_LIST_DIR})
 target_include_directories(Octahedron PUBLIC ${ZSTR_DIR})
+target_link_libraries(Octahedron PUBLIC SDL2-static)
+target_link_libraries(Octahedron PUBLIC SDL2_image)
+target_link_libraries(Octahedron PUBLIC SDL2_mixer)
 target_link_libraries(Octahedron PUBLIC fmt)
 
 target_sources(Octahedron

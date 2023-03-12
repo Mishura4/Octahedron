@@ -2,6 +2,8 @@
 
 #include "FileSystem.h"
 
+#include <fstream>
+
 using Octahedron::FileSystem;
 
 auto Octahedron::getUserHomeDir() -> std::optional<stdfs::path>
@@ -99,68 +101,119 @@ auto FileSystem::packageDirs() const noexcept -> std::span<const stdfs::path>
   return {_package_dirs};
 }
 
-auto FileSystem::isAccessible(const stdfs::path &path, BitSet<SearchMode> mode) const -> bool
+auto FileSystem::isAccessible(std::string_view path, std::ios_base::openmode mode) const -> bool
 {
-  if (mode & SearchMode::CREATE)
+  auto path_ = _resolvePath(path, mode);
+
+  if (!path_)
+    return (false);
+  return (_isAccessible(*path_, mode));
+}
+
+auto FileSystem::openFile(
+  std::string_view path,
+  std::ios_base::openmode mode) ->
+  std::unique_ptr<std::fstream>
+{
+  auto _path = _resolvePath(path, mode);
+
+  if (!_path)
+    return {nullptr};
+  if (mode & std::ios_base::out)
+    _createPath(_path->parent_path());
+  return (std::make_unique<std::fstream>(*_path, mode));
+}
+
+#include <SDL.h>
+
+
+auto FileSystem::openSDLRWops(std::string_view path,
+  std::ios_base::openmode mode) ->
+  SDL_RWops *
+{
+  auto path_ = _resolvePath(path, mode);
+
+  if (!path_)
+    return (nullptr);
+
+  std::string _mode;
+
+  if (mode & std::ios::out)
+  {
+    if (mode & std::ios::trunc)
+    {
+      if (mode & std::ios::in)
+        _mode = "w+";
+      else
+        _mode = "w";
+    }
+    else if (mode & std::ios::app)
+    {
+      if (mode & std::ios::in)
+        _mode = "a+";
+      else
+        _mode = "a";
+    }
+    else
+      _mode = "r+";
+  }
+  else if (mode & std::ios::in)
+    _mode = "r";
+  if (mode & std::ios::binary)
+    _mode += 'b';
+  return (SDL_RWFromFile(path_->string().c_str(), _mode.c_str()));
+}
+
+auto FileSystem::_isAccessible(const stdfs::path &path, std::ios_base::openmode mode) const -> bool
+{
+  if (mode & std::ios_base::out)
     return (stdfs::exists(path.parent_path()));
   return (stdfs::exists(path));
 }
 
-auto FileSystem::findFile(std::string_view file_name, BitSet<SearchMode> search_mode) const
+auto FileSystem::_resolvePath(std::string_view file_name, std::ios_base::openmode search_mode) const
   -> std::optional<stdfs::path>
 {
   // rewrite of tesseract's findfile, preserving logic
+
+  if (file_name.starts_with("../"sv))
+    return {std::nullopt};
+
   std::error_code err;
   const stdfs::path given{stdfs::path(file_name).lexically_normal()};
 
-  auto is_parent = [](stdfs::path given)
+  constexpr auto is_parent = [](const stdfs::path &given, const stdfs::path &base)
   {
-    constexpr stdfs::path::value_type parent[] = {'.', '.', '/'};
+    auto [input, end] = std::ranges::mismatch(given, base);
 
-    auto [input, end] = std::ranges::mismatch(given.native(), parent);
-
-    return (end == std::end(parent));
+    return (end == std::end(base));
   };
-
-  if (given.is_absolute() || is_parent(given))
-  {
-    log(LogLevel::ERROR, "attempt to access inaccessible directory {}", given.string());
+  if (given.is_absolute())
     return {std::nullopt};
-  }
-
-  if (!(search_mode & SearchMode::PACKAGE_ONLY))
+  if (!_home_dir.empty())
   {
-    if (!_home_dir.empty())
-    {
-      stdfs::path path = stdfs::weakly_canonical(_home_dir / given);
+    stdfs::path path = stdfs::weakly_canonical(_home_dir / given);
 
-      if (isAccessible(path, search_mode))
-        return {path};
-      if (search_mode & SearchMode::CREATE)
-      {
-        // TODO: move this logic somewhere else? we are not "finding a file", this is related to opening
-        stdfs::create_directories(path.parent_path());
-        return {path};
-      }
-    }
+    if (search_mode & std::ios_base::out || _isAccessible(path, search_mode))
+      return {path};
   }
-  if (search_mode & SearchMode::CREATE)
+  if (search_mode & std::ios_base::out)
     return {std::nullopt};
   for (const stdfs::path &dir : packageDirs())
   {
     stdfs::path path = stdfs::weakly_canonical(dir / given);
 
-    if (isAccessible(path, search_mode))
+    if (_isAccessible(path, search_mode))
       return {path};
   }
-  if (isAccessible(given, search_mode))
+  if (_isAccessible(given, search_mode))
     return {given};
   return {std::nullopt};
 }
 
 bool FileSystem::remove(std::string_view path)
 {
-  auto full_path = findFile(path, SearchMode::CREATE);
+  auto full_path = _resolvePath(path, std::ios_base::out);
 
   if (!full_path)
     return (false);
@@ -178,8 +231,8 @@ bool FileSystem::remove(std::string_view path)
 
 bool FileSystem::rename(std::string_view old_path, std::string_view new_path)
 {
-  auto resolved_old = findFile(old_path, SearchMode::CREATE);
-  auto resolved_new = findFile(new_path, SearchMode::CREATE);
+  auto resolved_old = _resolvePath(old_path, std::ios::out);
+  auto resolved_new = _resolvePath(new_path, std::ios::out);
 
   if (!resolved_old || !resolved_new)
     return (false);
@@ -192,11 +245,16 @@ bool FileSystem::rename(std::string_view old_path, std::string_view new_path)
 
 bool FileSystem::createPath(std::string_view path)
 {
-  auto resolved = findFile(path, SearchMode::CREATE);
+  auto resolved = _resolvePath(path, std::ios::out);
 
   if (!resolved)
     return (false);
-  if (isAccessible(path, SearchMode::CREATE))
+  return (_createPath(path));
+}
+
+bool FileSystem::_createPath(const stdfs::path &path)
+{
+  if (_isAccessible(path, std::ios::out))
     return (true);
-  return (stdfs::create_directories(*resolved));
+  return (stdfs::create_directories(path));
 }

@@ -1227,15 +1227,12 @@ int main(int argc, char **argv)
 
     logoutf("init: mainloop");
 
-    using SearchMode = Octahedron::FileSystem::SearchMode;
-
-    auto path = g_engine->fileSystem().findFile("once.cfg");
-    if (path)
+    if (g_engine->fileSystem().isAccessible("once.cfg"))
     {
-        if (execfile(path->string().c_str(), false))
-            remove(path->string().c_str());
+        if (execfile("once.cfg", false))
+            g_engine->fileSystem().remove("once.cfg");
         else
-            Octahedron::log(Octahedron::LogLevel::WARN, "failed to execute {}", *path);
+            Octahedron::log(Octahedron::LogLevel::WARN, "failed to execute {}", "once.cfg");
     }
 
     if(load)

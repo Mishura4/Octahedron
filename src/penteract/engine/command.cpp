@@ -3989,7 +3989,7 @@ void findfile_(char *name)
 #ifndef STANDALONE
     findzipfile(fname) ||
 #endif
-      g_engine->fileSystem().findFile(name) ? 1 : 0
+      g_engine->fileSystem().isAccessible(name) ? 1 : 0
   );
 }
 COMMANDN(findfile, findfile_, "s");

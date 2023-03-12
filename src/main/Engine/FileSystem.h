@@ -22,6 +22,8 @@
 
 #include "Tools/ManagedResource.h"
 
+struct SDL_RWops;
+
 namespace Octahedron
 {
   namespace stdfs = ::std::filesystem;
@@ -51,15 +53,7 @@ namespace Octahedron
   class FileSystem
   {
     public:
-      enum class SearchMode : int
-      {
-        NONE           = bitflag<SearchMode>(0),
-        CREATE         = bitflag<SearchMode>(1),
-        PACKAGE_ONLY   = bitflag<SearchMode>(2),
-        DIRECTORY_ONLY = bitflag<SearchMode>(3),
-
-        DEFAULT = NONE
-      };
+      constexpr static inline auto DEFAULT_OPENMODE = std::ios::in;
 
       void setHomeDir(std::string_view dir);
       void addPackageDir(std::string_view dir);
@@ -67,23 +61,39 @@ namespace Octahedron
       auto homeDir() const noexcept -> const stdfs::path &;
       auto packageDirs() const noexcept -> std::span<const stdfs::path>;
 
-      auto isAccessible(
-        const stdfs::path &path,
-        BitSet<SearchMode> search_mode = SearchMode::DEFAULT
-      ) const -> bool;
-
-      auto findFile(
-        std::string_view file_name,
-        BitSet<SearchMode> search_mode = SearchMode::DEFAULT
-      ) const -> std::optional<stdfs::path>;
+      bool isAccessible(
+        std::string_view path,
+        std::ios_base::openmode mode = DEFAULT_OPENMODE
+      ) const;
 
       bool remove(std::string_view path);
       bool rename(std::string_view old_path, std::string_view new_path);
       bool createPath(std::string_view path);
 
+      auto openFile(std::string_view path,
+        std::ios_base::openmode mode = DEFAULT_OPENMODE) ->
+        std::unique_ptr<std::fstream>;
+
+      // LEGACY : to be replaced down the line
+      auto openSDLRWops(std::string_view path,
+        std::ios_base::openmode mode = DEFAULT_OPENMODE) ->
+        SDL_RWops *;
+
     private:
       stdfs::path _home_dir{stdfs::current_path()};
       std::vector<stdfs::path> _package_dirs{};
+
+      auto _resolvePath(
+        std::string_view file_name,
+        std::ios_base::openmode mode = DEFAULT_OPENMODE
+      ) const->std::optional<stdfs::path>;
+
+      bool _isAccessible(
+        const stdfs::path &path,
+        std::ios_base::openmode mode = DEFAULT_OPENMODE
+      ) const;
+
+      bool _createPath(const stdfs::path &path);
   };
 }  // namespace Octahedron
 

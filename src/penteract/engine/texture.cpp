@@ -1531,8 +1531,8 @@ SDL_Surface *loadsurface(const char *name)
     }
     if (!s)
     {
-        if (auto path = g_engine->fileSystem().findFile(name); path)
-            s = IMG_Load(path->string().c_str()); /*findfile(name, "rb")*/
+        if (auto rw = g_engine->fileSystem().openSDLRWops(name); rw)
+            s = IMG_Load_RW(rw, 1); /*findfile(name, "rb")*/
     }
     return fixsurfaceformat(s);
 }

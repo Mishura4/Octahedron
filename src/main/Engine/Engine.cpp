@@ -135,18 +135,18 @@ namespace
 
 void Engine::setLogFile(std::string_view file)
 {
-  auto path = _filesystem.findFile(file, FileSystem::SearchMode::CREATE);
+  auto stream = _filesystem.openFile(file, std::ios::out | std::ios::trunc);
 
-  if (!path)
+  if (!stream)
   {
-    _logger.log(LogLevel::ERROR, "invalid log file path: {}", CLOSURE(path->string()));
+    _logger.log(LogLevel::ERROR, "invalid log file path: {}", file);
     return;
   }
-  _log_file.target.open(*path, std::ios::out | std::ios::trunc);
+  _log_file.target = std::move(*stream);
   if (!_log_file.target.good())
-    _logger.log(LogLevel::ERROR, "failed to set log file to {}", CLOSURE(path->string()));
+    _logger.log(LogLevel::ERROR, "failed to set log file to {}", file);
   else
-    _logger.log(LogLevel::BASIC, "log file set to {}", CLOSURE(path->string()));
+    _logger.log(LogLevel::BASIC, "log file set to {}", file);
 }
 
 void Octahedron::Engine::log(BitSet<LogLevel> level, std::string_view line)
