@@ -10,7 +10,6 @@ AlignConsecutiveAssignments:
   AcrossComments: true
 AlignConsecutiveDeclarations: 'false'
 AlignEscapedNewlines: Right
-AlignOperands: 'DontAlign'
 AlignTrailingComments: 'true'
 AllowAllArgumentsOnNextLine: 'false'
 AllowAllConstructorInitializersOnNextLine: 'false'
