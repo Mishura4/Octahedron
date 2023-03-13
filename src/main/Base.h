@@ -33,9 +33,24 @@ namespace Octahedron
   using fuint32 = uint_fast32_t;
   using fuint64 = uint_fast64_t;
 
+  using size_t = std::size_t;
+  using ssize_t = std::make_signed_t<size_t>;
+
   using std::byte;
 
   using namespace std::string_view_literals;
+
+  namespace _
+  {
+    template <typename T>
+    void implicit_conversion_test(T){};
+  }
+
+  template <typename T, typename U>
+  concept implicitly_convertible_to = requires { _::implicit_conversion_test<U>(std::declval<const T &>()); };
+
+  template <typename T>
+  concept scoped_enum = std::is_enum_v<T> && !implicitly_convertible_to<std::underlying_type_t<T>>;
 
   template <typename T, typename U>
   requires(sizeof(T) < sizeof(U) && !std::is_reference_v<T> && std::is_unsigned_v<T> ||
@@ -117,53 +132,101 @@ namespace Octahedron
   requires(std::is_enum_v<T>)
   struct BitSet
   {
-      template <typename... Args>
-      requires(std::same_as<T, std::remove_reference_t<Args>> && ...)
-      constexpr BitSet(Args &&...values) noexcept : value{(decay_cast(values) & ...)}
+      constexpr BitSet(std::underlying_type_t<T> value_) noexcept : value{value_} {}
+
+      constexpr BitSet(T value_) noexcept
+      requires(scoped_enum<T>)
+          : value{value_}
       {
       }
 
       constexpr BitSet operator&(const BitSet &other) const noexcept
+      requires(scoped_enum<T>)
       {
-        return (T{value & other.value});
+        return {static_cast<T>(value & other.value)};
       }
 
       constexpr BitSet &operator&=(const BitSet &other) noexcept
+      requires(scoped_enum<T>)
       {
         value &= other.value;
         return (*this);
       }
 
       constexpr BitSet operator|(const BitSet &other) const noexcept
+      requires(scoped_enum<T>)
       {
         return (T{value | other.value});
       }
 
       constexpr BitSet &operator|=(const BitSet &other) noexcept
+      requires(scoped_enum<T>)
       {
         value |= other.value;
         return (*this);
       }
 
       constexpr BitSet operator^(const BitSet &other) const noexcept
+      requires(scoped_enum<T>)
       {
         return (T{value ^ other.value});
       }
 
       constexpr BitSet &operator^=(const BitSet &other) noexcept
+      requires(scoped_enum<T>)
       {
         value ^= other.value;
         return (*this);
       }
 
+      constexpr BitSet operator&(std::underlying_type_t<T> other) const noexcept
+      requires(!scoped_enum<T>)
+      {
+        return {value & other};
+      }
+
+      constexpr BitSet &operator&=(std::underlying_type_t<T> other) noexcept
+      requires(!scoped_enum<T>)
+      {
+        value &= other;
+        return (*this);
+      }
+
+      constexpr BitSet operator|(std::underlying_type_t<T> other) const noexcept
+      requires(!scoped_enum<T>)
+      {
+        return {value | other};
+      }
+
+      constexpr BitSet &operator|=(std::underlying_type_t<T> other) noexcept
+      requires(!scoped_enum<T>)
+      {
+        value |= other;
+        return (*this);
+      }
+
+      constexpr BitSet operator^(std::underlying_type_t<T> other) const noexcept
+      requires(!scoped_enum<T>)
+      {
+        return {value ^ other};
+      }
+
+      constexpr BitSet &operator^=(std::underlying_type_t<T> other) noexcept
+      requires(!scoped_enum<T>)
+      {
+        value ^= other;
+        return (*this);
+      }
+
       operator bool() const { return (value != 0); }
 
-      [[msvc::intrinsice]] operator T() const { return (T{value}); }
+      [[msvc::intrinsic]] operator T() const { return (static_cast<T>(value)); }
 
-      constexpr BitSet operator~() const noexcept { return (T{~value}); }
+      constexpr BitSet operator~() const noexcept { return (static_cast<T>(~value)); }
 
       constexpr BitSet(const BitSet &other) noexcept                 = default;
-      constexpr auto operator<=>(const BitSet &other) const noexcept = default;
+      constexpr auto operator<=>(const BitSet &other) const noexcept
+      requires(scoped_enum<T>) = default;
 
       std::underlying_type_t<T> value;
   };

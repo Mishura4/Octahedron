@@ -11,6 +11,8 @@
 #include "../Octahedron.h"
 #include "../Tools/ManagedResource.h"
 
+#include "IOInterface.h"
+
 #ifdef ERROR
 #  undef ERROR
 #endif
@@ -156,6 +158,49 @@ namespace Octahedron
         if (suffix_generator)
           target << suffix_generator(level, msg);
         target << '\n';
+      }
+  };
+
+  template <typename T>
+  requires(writeable<T>)
+  struct Logger<std::unique_ptr<T>> : LoggerBase<Logger<std::unique_ptr<T>>>
+  {
+      using base = LoggerBase<Logger<std::unique_ptr<T>>>;
+      using base::prefix_generator;
+      using base::suffix_generator;
+
+      std::unique_ptr<T> target;
+
+      Logger(std::unique_ptr<T>&& target_, auto &&...args) : base(args...), target(std::move(target_))
+      {
+
+      }
+
+      Logger(const Logger &) = delete;
+      Logger(Logger &&)      = default;
+
+      void write(LogLevel level, std::string_view msg)
+      {
+        // TODO: clean up casts
+
+        if (prefix_generator)
+        {
+          std::string &&prefix = prefix_generator(level, msg);
+
+          target->write(reinterpret_cast<const std::byte *>(prefix.c_str()), prefix.size());
+        }
+        target->write(reinterpret_cast<const std::byte *>(msg.data()), msg.size());
+        if (suffix_generator)
+        {
+          std::string &&suffix = suffix_generator(level, msg);
+
+          target->write(reinterpret_cast<const std::byte *>(suffix.c_str()), suffix.size());
+        }
+        target->write(reinterpret_cast<const std::byte *>("\n"), 1);
+        if constexpr (requires(T & t) { t.flush(); })
+        {
+          target->flush();
+        }
       }
   };
 

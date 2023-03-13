@@ -101,7 +101,7 @@ auto FileSystem::packageDirs() const noexcept -> std::span<const stdfs::path>
   return {_package_dirs};
 }
 
-auto FileSystem::isAccessible(std::string_view path, std::ios_base::openmode mode) const -> bool
+auto FileSystem::isAccessible(std::string_view path, BitSet<OpenFlags> mode) const -> bool
 {
   auto path_ = _resolvePath(path, mode);
 
@@ -110,25 +110,26 @@ auto FileSystem::isAccessible(std::string_view path, std::ios_base::openmode mod
   return (_isAccessible(*path_, mode));
 }
 
-auto FileSystem::openFile(
+#include "FileStream.h"
+
+auto FileSystem::open(
   std::string_view path,
-  std::ios_base::openmode mode) ->
-  std::unique_ptr<std::fstream>
+  BitSet<OpenFlags> mode) -> std::unique_ptr<FileStream>
 {
   auto _path = _resolvePath(path, mode);
 
   if (!_path)
     return {nullptr};
-  if (mode & std::ios_base::out)
+  if (mode & (OpenFlags::APPEND | OpenFlags::TRUNCATE))
     _createPath(_path->parent_path());
-  return (std::make_unique<std::fstream>(*_path, mode));
+  return (RawFileStream::_open(*_path, mode));
 }
 
 #include <SDL.h>
 
 
 auto FileSystem::openSDLRWops(std::string_view path,
-  std::ios_base::openmode mode) ->
+  BitSet<OpenFlags> mode) ->
   SDL_RWops *
 {
   auto path_ = _resolvePath(path, mode);
@@ -164,14 +165,14 @@ auto FileSystem::openSDLRWops(std::string_view path,
   return (SDL_RWFromFile(path_->string().c_str(), _mode.c_str()));
 }
 
-auto FileSystem::_isAccessible(const stdfs::path &path, std::ios_base::openmode mode) const -> bool
+auto FileSystem::_isAccessible(const stdfs::path &path, BitSet<OpenFlags> mode) const -> bool
 {
   if (mode & std::ios_base::out)
     return (stdfs::exists(path.parent_path()));
   return (stdfs::exists(path));
 }
 
-auto FileSystem::_resolvePath(std::string_view file_name, std::ios_base::openmode search_mode) const
+auto FileSystem::_resolvePath(std::string_view file_name, BitSet<OpenFlags> search_mode) const
   -> std::optional<stdfs::path>
 {
   // rewrite of tesseract's findfile, preserving logic
@@ -194,10 +195,10 @@ auto FileSystem::_resolvePath(std::string_view file_name, std::ios_base::openmod
   {
     stdfs::path path = stdfs::weakly_canonical(_home_dir / given);
 
-    if (search_mode & std::ios_base::out || _isAccessible(path, search_mode))
+    if ((search_mode & OpenFlags::OUTPUT) || _isAccessible(path, search_mode))
       return {path};
   }
-  if (search_mode & std::ios_base::out)
+  if (search_mode & OpenFlags::OUTPUT)
     return {std::nullopt};
   for (const stdfs::path &dir : packageDirs())
   {
@@ -213,7 +214,7 @@ auto FileSystem::_resolvePath(std::string_view file_name, std::ios_base::openmod
 
 bool FileSystem::remove(std::string_view path)
 {
-  auto full_path = _resolvePath(path, std::ios_base::out);
+  auto full_path = _resolvePath(path, OpenFlags::OUTPUT);
 
   if (!full_path)
     return (false);
@@ -231,8 +232,8 @@ bool FileSystem::remove(std::string_view path)
 
 bool FileSystem::rename(std::string_view old_path, std::string_view new_path)
 {
-  auto resolved_old = _resolvePath(old_path, std::ios::out);
-  auto resolved_new = _resolvePath(new_path, std::ios::out);
+  auto resolved_old = _resolvePath(old_path, OpenFlags::OUTPUT);
+  auto resolved_new = _resolvePath(new_path, OpenFlags::OUTPUT);
 
   if (!resolved_old || !resolved_new)
     return (false);
@@ -245,7 +246,7 @@ bool FileSystem::rename(std::string_view old_path, std::string_view new_path)
 
 bool FileSystem::createPath(std::string_view path)
 {
-  auto resolved = _resolvePath(path, std::ios::out);
+  auto resolved = _resolvePath(path, OpenFlags::OUTPUT);
 
   if (!resolved)
     return (false);
@@ -254,7 +255,7 @@ bool FileSystem::createPath(std::string_view path)
 
 bool FileSystem::_createPath(const stdfs::path &path)
 {
-  if (_isAccessible(path, std::ios::out))
+  if (_isAccessible(path, OpenFlags::OUTPUT))
     return (true);
   return (stdfs::create_directories(path));
 }

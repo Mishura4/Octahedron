@@ -31,6 +31,27 @@ namespace Octahedron
   constexpr const char filepath_regex[] =
     "^((?:([a-zA-Z]):[\\\\\\/])|((?:[\\\\\\/])))?((?:[a-zA-Z0-9\\.]+[\\\\\\/])*)([\\.a-zA-Z0-9]*)$";
 
+  namespace _
+  {
+    struct OpenFlags
+    {
+        enum Values
+        {
+          NONE     = bitflag(0),
+          INPUT    = bitflag(1),
+          OUTPUT   = bitflag(2),
+          APPEND   = bitflag(3),
+          TRUNCATE = bitflag(4),
+          BINARY   = bitflag(15),
+
+          DEFAULT = INPUT,
+          MASK_CREATE = APPEND | TRUNCATE
+        };
+    };
+  }  // namespace _
+
+  using OpenFlags = _::OpenFlags::Values;
+
   /**
    * \brief Wrapper for OS-specific APIs, returns an stdfs::path containing the user's home directory.
    * (e.g. `/home/user/` on unix, `C:\\Users\\user\\Documents\\` on Windows.
@@ -50,48 +71,40 @@ namespace Octahedron
 
   auto fullPath(stdfs::path str) -> std::optional<stdfs::path>;
 
+  class FileStream;
+
   class FileSystem
   {
     public:
-      constexpr static inline auto DEFAULT_OPENMODE = std::ios::in;
-
       void setHomeDir(std::string_view dir);
       void addPackageDir(std::string_view dir);
 
       auto homeDir() const noexcept -> const stdfs::path &;
       auto packageDirs() const noexcept -> std::span<const stdfs::path>;
 
-      bool isAccessible(
-        std::string_view path,
-        std::ios_base::openmode mode = DEFAULT_OPENMODE
-      ) const;
+      bool isAccessible(std::string_view path, BitSet<OpenFlags> mode = OpenFlags::DEFAULT) const;
 
       bool remove(std::string_view path);
       bool rename(std::string_view old_path, std::string_view new_path);
       bool createPath(std::string_view path);
 
-      auto openFile(std::string_view path,
-        std::ios_base::openmode mode = DEFAULT_OPENMODE) ->
-        std::unique_ptr<std::fstream>;
+      auto open(std::string_view path, BitSet<OpenFlags> mode = OpenFlags::DEFAULT)
+        -> std::unique_ptr<FileStream>;
 
       // LEGACY : to be replaced down the line
-      auto openSDLRWops(std::string_view path,
-        std::ios_base::openmode mode = DEFAULT_OPENMODE) ->
-        SDL_RWops *;
+      auto openSDLRWops(std::string_view path, BitSet<OpenFlags> mode = OpenFlags::DEFAULT)
+        -> SDL_RWops *;
 
     private:
       stdfs::path _home_dir{stdfs::current_path()};
       std::vector<stdfs::path> _package_dirs{};
 
-      auto _resolvePath(
-        std::string_view file_name,
-        std::ios_base::openmode mode = DEFAULT_OPENMODE
-      ) const->std::optional<stdfs::path>;
+      auto
+      _resolvePath(std::string_view file_name, BitSet<OpenFlags> mode = OpenFlags::DEFAULT) const
+        -> std::optional<stdfs::path>;
 
-      bool _isAccessible(
-        const stdfs::path &path,
-        std::ios_base::openmode mode = DEFAULT_OPENMODE
-      ) const;
+      bool
+      _isAccessible(const stdfs::path &path, BitSet<OpenFlags> mode = OpenFlags::DEFAULT) const;
 
       bool _createPath(const stdfs::path &path);
   };

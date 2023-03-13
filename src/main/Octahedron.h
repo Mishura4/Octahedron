@@ -53,6 +53,14 @@ namespace Octahedron
     log(level, line);
   }
 
+  template <typename T>
+  constexpr inline T error_value{};
+
+  template <>
+  constexpr inline size_t error_value<size_t> = std::numeric_limits<size_t>::max();
+
+  constexpr inline size_t error_size = error_value<size_t>;
+
 // clang-format off
   #define OPENING_PARENTHESIS (
   #define CLOSING_PARENTHESIS )

@@ -90,8 +90,4 @@ IndentAccessModifiers: true
 
 RequiresExpressionIndentation: OuterScope
 
-SeparateDefinitionBlocks: Always
-
-IndentRequiresClause: false
-
 ...

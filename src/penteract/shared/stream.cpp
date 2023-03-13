@@ -504,7 +504,7 @@ int listfiles(const char *dir, const char *ext, vector<char *> &files)
     return dirs;
 }
 
-#ifndef STANDALONE
+/* #ifndef STANDALONE
 static Sint64 rwopsseek(SDL_RWops *rw, Sint64 pos, int whence)
 {
     stream *f = (stream *)rw->hidden.unknown.data1;
@@ -548,7 +548,7 @@ stream::offset stream::size()
     if(pos < 0 || !seek(0, SEEK_END)) return -1;
     endpos = tell();
     return pos == endpos || seek(pos, SEEK_SET) ? endpos : -1;
-}
+}*/
 
 bool stream::getline(char *str, size_t len)
 {

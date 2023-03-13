@@ -1,12 +1,12 @@
 #include "Engine.h"
-#include "Engine.h"
-#include "Engine.h"
 #include "Octahedron.h"
 
 #include <regex>
 #include <variant>
 
 #include "Engine/Engine.h"
+#include "IO/FileSystem.h"
+#include "IO/FileStream.h"
 #include "IO/Logger.h"
 #include "Tools/Exception.h"
 #include "Tools/Registry.h"
@@ -133,20 +133,19 @@ namespace
   }
 }  // namespace
 
+#include "IO/FileStream.h"
+
 void Engine::setLogFile(std::string_view file)
 {
-  auto stream = _filesystem.openFile(file, std::ios::out | std::ios::trunc);
+  auto stream = _filesystem.open(file, std::ios::out | std::ios::trunc);
 
   if (!stream)
   {
-    _logger.log(LogLevel::ERROR, "invalid log file path: {}", file);
+    _logger.log(LogLevel::ERROR, "failed to set log file to {}", file);
     return;
   }
-  _log_file.target = std::move(*stream);
-  if (!_log_file.target.good())
-    _logger.log(LogLevel::ERROR, "failed to set log file to {}", file);
-  else
-    _logger.log(LogLevel::BASIC, "log file set to {}", file);
+  _log_file.target = std::move(stream);
+  _logger.log(LogLevel::BASIC, "log file set to {}", file);
 }
 
 void Octahedron::Engine::log(BitSet<LogLevel> level, std::string_view line)

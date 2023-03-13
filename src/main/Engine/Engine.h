@@ -12,7 +12,8 @@
 
 #include "../IO/Logger.h"
 #include "../Tools/ProtectedPtr.h"
-#include "FileSystem.h"
+#include "../IO/FileSystem.h"
+#include "../IO/FileStream.h"
 
 namespace Octahedron
 {
@@ -101,9 +102,9 @@ namespace Octahedron
       void _parseArgs(std::span<const char *const> args);
       size_t _getSeedBase() const noexcept;
 
-      Logger<std::fstream> _log_file{std::fstream{}};
+      Logger<std::unique_ptr<FileStream>> _log_file{nullptr};
       Logger<std::fstream> _debug_log_file{std::fstream{}};
-      LoggerSystem<Logger<std::fstream>> _logger{_log_file, _debug_log_file};
+      LoggerSystem<decltype(_log_file), Logger<std::fstream>> _logger{_log_file, _debug_log_file};
 
       GameClock _game_clock{};
       DayClock _day_clock{};

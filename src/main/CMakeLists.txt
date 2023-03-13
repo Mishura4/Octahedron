@@ -42,4 +42,4 @@ target_sources(Octahedron
         ${CMAKE_CURRENT_LIST_DIR}/Tools/ProtectedPtr.h
         ${CMAKE_CURRENT_LIST_DIR}/Engine/Engine.cpp
     PUBLIC
- "Tools/Math.h" "Tools/StringLiteral.h" "Tools/Exception.h" "Engine/Engine.h" "Tools/ManagedResource.h" "IO/Logger.h" "Engine/FileSystem.h" "Engine/FileSystem.cpp" "Octahedron.cpp" "Base.h")
+ "Tools/Math.h" "Tools/StringLiteral.h" "Tools/Exception.h" "Engine/Engine.h" "Tools/ManagedResource.h" "IO/Logger.h" "IO/FileSystem.h" "IO/FileSystem.cpp" "Octahedron.cpp" "Base.h" "IO/IOStream.h" "IO/IOStream.cpp" "IO/FileStream.cpp" "IO/FileStream.h" "IO/IOInterface.h")
