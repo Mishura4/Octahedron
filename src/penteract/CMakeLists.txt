@@ -144,6 +144,11 @@ target_include_directories(penteract PRIVATE ${CMAKE_CURRENT_LIST_DIR}/engine)
 target_include_directories(penteract PRIVATE ${CMAKE_CURRENT_LIST_DIR}/game)
 target_include_directories(penteract PRIVATE ${CMAKE_CURRENT_LIST_DIR}/shared)
 
+target_precompile_headers(penteract PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/engine/engine.h
+    ${CMAKE_CURRENT_LIST_DIR}/shared/cube.h
+)
+
 # target_link_libraries(Octahedron PUBLIC fmt)
 target_link_libraries(penteract PUBLIC Octahedron)
 target_link_libraries(penteract PUBLIC enet)
