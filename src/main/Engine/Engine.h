@@ -109,7 +109,7 @@ namespace Octahedron
       GameClock _game_clock{};
       DayClock _day_clock{};
 
-      std::mt19937 _mt32{_getSeedBase()};
+      std::mt19937 _mt32{uint32(_getSeedBase())};
       std::mt19937_64 _mt64{_getSeedBase()};
 
       struct WellRNG512

@@ -1,3 +1,5 @@
+#include "IO/FileStream.h"
+
 struct md2;
 
 static const float md2normaltable[256][3] =
@@ -127,21 +129,20 @@ struct md2 : vertloader<md2>
 
         bool load(const char *filename, float smooth)
         {
-            stream *file = openfile(filename, "rb");
-            if(!file) return false;
+          using enum Octahedron::OpenFlags;
+
+            auto file = Octahedron::FileSystem().open(filename, INPUT | BINARY);
+            if (!file)
+                return false;
 
             md2_header header;
-            file->read(&header, sizeof(md2_header));
-            lilswap(&header.magic, sizeof(md2_header)/sizeof(int));
+            file->get(header);
 
             if(header.magic!=844121161 || header.version!=8 ||
                header.numframes <= 0 || header.numframes > 1000 ||
                header.numglcommands <= 0 || header.numglcommands > (1<<20) ||
                header.numvertices <= 0 || header.numvertices > (1<<20))
-            {
-                delete file;
                 return false;
-            }
 
             name = newstring(filename);
 
@@ -153,9 +154,10 @@ struct md2 : vertloader<md2>
 
             int *glcommands = new int[header.numglcommands];
             file->seek(header.offsetglcommands, SEEK_SET);
-            int numglcommands = file->read(glcommands, header.numglcommands*sizeof(int))/sizeof(int);
-            lilswap(glcommands, numglcommands);
-            if(numglcommands < header.numglcommands) memset(&glcommands[numglcommands], 0, (header.numglcommands-numglcommands)*sizeof(int));
+            int numglcommands = file->get(glcommands, header.numglcommands);
+
+            if(numglcommands < header.numglcommands)
+              memset(&glcommands[numglcommands], 0, (header.numglcommands-numglcommands)*sizeof(int));
 
             vector<tcvert> tcgen;
             vector<ushort> vgen;
@@ -180,10 +182,9 @@ struct md2 : vertloader<md2>
             {
                 md2_frame frame;
                 file->seek(frame_offset, SEEK_SET);
-                file->read(&frame, sizeof(md2_frame));
-                lilswap(frame.scale, 6);
+                file->get(frame);
 
-                file->read(tmpverts, header.numvertices*sizeof(md2_vertex));
+                file->get(tmpverts, header.numvertices);
                 loopj(m.numverts)
                 {
                     const md2_vertex &v = tmpverts[vgen[j]];
@@ -199,8 +200,6 @@ struct md2 : vertloader<md2>
             delete[] tmpverts;
 
             m.calctangents();
-
-            delete file;
 
             return true;
         }

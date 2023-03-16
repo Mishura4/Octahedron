@@ -17,17 +17,13 @@ struct vertmodel : animmodel
 
     struct vertmesh : mesh
     {
-        vert *verts;
-        tcvert *tcverts;
-        tri *tris;
+        vert *verts{nullptr};
+        tcvert *tcverts{nullptr};
+        tri *tris{nullptr};
         int numverts, numtris;
 
         int voffset, eoffset, elen;
         ushort minvert, maxvert;
-
-        vertmesh() : verts(0), tcverts(0), tris(0)
-        {
-        }
 
         virtual ~vertmesh()
         {

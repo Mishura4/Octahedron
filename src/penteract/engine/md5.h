@@ -1,3 +1,7 @@
+#include "engine.h"
+
+#include "IO/FileStream.h"
+
 struct md5;
 
 struct md5joint
@@ -83,26 +87,29 @@ struct md5 : skelloader<md5>
             }
         }
 
-        void load(stream *f, char *buf, size_t bufsize)
+        void load(Octahedron::FileStream *f, std::optional<std::string> &line)
         {
             md5weight w;
             md5vert v;
             tri t;
             int index;
 
-            while(f->getline(buf, bufsize) && buf[0]!='}')
+            while ((line = f->getLine(2048)) && line && !line->starts_with('}'))
             {
+                const char *buf = line->c_str();
+
                 if(strstr(buf, "// meshes:"))
                 {
-                    char *start = strchr(buf, ':')+1;
+                    const char *start = strchr(buf, ':')+1;
                     if(*start==' ') start++;
-                    char *end = start + strlen(start)-1;
+                    const char *end = start + strlen(start) - 1;
                     while(end >= start && isspace(*end)) end--;
                     name = newstring(start, end+1-start);
                 }
                 else if(strstr(buf, "shader"))
                 {
-                    char *start = strchr(buf, '"'), *end = start ? strchr(start+1, '"') : NULL;
+                    const char *start = strchr(buf, '"'),
+                               *end   = start ? strchr(start + 1, '"') : NULL;
                     if(start && end)
                     {
                         char *texname = newstring(start+1, end-(start+1));
@@ -157,37 +164,40 @@ struct md5 : skelloader<md5>
 
         bool loadmesh(const char *filename, float smooth)
         {
-            stream *f = openfile(filename, "r");
+            auto f = g_engine->fileSystem().open(filename, Octahedron::OpenFlags::INPUT);
             if(!f) return false;
 
-            char buf[512];
             vector<md5joint> basejoints;
-            while(f->getline(buf, sizeof(buf)))
+            while(auto line = f->getLine(2048))
             {
+                const char *buf         = line->c_str();
+
                 int tmp;
                 if(sscanf(buf, " MD5Version %d", &tmp)==1)
                 {
-                    if(tmp!=10) { delete f; return false; }
+                    if(tmp!=10) { return false; }
                 }
                 else if(sscanf(buf, " numJoints %d", &tmp)==1)
                 {
-                    if(tmp<1) { delete f; return false; }
+                    if(tmp<1) { return false; }
                     if(skel->numbones>0) continue;
                     skel->numbones = tmp;
                     skel->bones = new boneinfo[skel->numbones];
                 }
                 else if(sscanf(buf, " numMeshes %d", &tmp)==1)
                 {
-                    if(tmp<1) { delete f; return false; }
+                    if(tmp<1) { return false; }
                 }
                 else if(strstr(buf, "joints {"))
                 {
                     string name;
                     int parent;
                     md5joint j;
-                    while(f->getline(buf, sizeof(buf)) && buf[0]!='}')
+                    std::optional<std::string> line2;
+                    while ((line2 = f->getLine(2048)) && !line2->starts_with('}'))
                     {
-                        char *curbuf = buf, *curname = name;
+                        const char *curbuf = line2->c_str();
+                        char *curname = name;
                         bool allowspace = false;
                         while(*curbuf && isspace(*curbuf)) curbuf++;
                         if(*curbuf == '"') { curbuf++; allowspace = true; }
@@ -216,14 +226,14 @@ struct md5 : skelloader<md5>
                             basejoints.add(j);
                         }
                     }
-                    if(basejoints.length()!=skel->numbones) { delete f; return false; }
+                    if(basejoints.length()!=skel->numbones) { return false; }
                 }
                 else if(strstr(buf, "mesh {"))
                 {
                     md5mesh *m = new md5mesh;
                     m->group = this;
                     meshes.add(m);
-                    m->load(f, buf, sizeof(buf));
+                    m->load(f.get(), line);
                     if(!m->numtris || !m->numverts)
                     {
                         conoutf(CON_WARN, "empty mesh in %s", filename);
@@ -256,7 +266,6 @@ struct md5 : skelloader<md5>
 
             sortblendcombos();
 
-            delete f;
             return true;
         }
 
@@ -265,7 +274,7 @@ struct md5 : skelloader<md5>
             skelanimspec *sa = skel->findskelanim(filename);
             if(sa) return sa;
 
-            stream *f = openfile(filename, "r");
+            auto f = g_engine->fileSystem().open(filename, Octahedron::OpenFlags::INPUT);
             if(!f) return NULL;
 
             vector<md5hierarchy> hierarchy;
@@ -273,21 +282,21 @@ struct md5 : skelloader<md5>
             int animdatalen = 0, animframes = 0;
             float *animdata = NULL;
             dualquat *animbones = NULL;
-            char buf[512];
-            while(f->getline(buf, sizeof(buf)))
+            while(auto line = f->getLine(2048))
             {
+                const char *buf = line->c_str();
                 int tmp;
                 if(sscanf(buf, " MD5Version %d", &tmp)==1)
                 {
-                    if(tmp!=10) { delete f; return NULL; }
+                    if(tmp!=10) { return NULL; }
                 }
                 else if(sscanf(buf, " numJoints %d", &tmp)==1)
                 {
-                    if(tmp!=skel->numbones) { delete f; return NULL; }
+                    if(tmp!=skel->numbones) { return NULL; }
                 }
                 else if(sscanf(buf, " numFrames %d", &animframes)==1)
                 {
-                    if(animframes<1) { delete f; return NULL; }
+                    if(animframes<1) { return NULL; }
                 }
                 else if(sscanf(buf, " frameRate %d", &tmp)==1);
                 else if(sscanf(buf, " numAnimatedComponents %d", &animdatalen)==1)
@@ -296,12 +305,13 @@ struct md5 : skelloader<md5>
                 }
                 else if(strstr(buf, "bounds {"))
                 {
-                    while(f->getline(buf, sizeof(buf)) && buf[0]!='}');
+                    while ((line = f->getLine(2048)) && !line->starts_with('}'));
                 }
                 else if(strstr(buf, "hierarchy {"))
                 {
-                    while(f->getline(buf, sizeof(buf)) && buf[0]!='}')
+                    while ((line = f->getLine(2048)) && !line->starts_with('}'))
                     {
+                        buf = line->c_str();
                         string name;
                         md5hierarchy h;
                         if(sscanf(buf, " %100s %d %d %d", name, &h.parent, &h.flags, &h.start)==4)
@@ -323,8 +333,9 @@ struct md5 : skelloader<md5>
                 }
                 else if(strstr(buf, "baseframe {"))
                 {
-                    while(f->getline(buf, sizeof(buf)) && buf[0]!='}')
+                    while ((line = f->getLine(2048)) && !line->starts_with('}'))
                     {
+                        buf = line->c_str();
                         md5joint j;
                         if(sscanf(buf, " ( %f %f %f ) ( %f %f %f )", &j.pos.x, &j.pos.y, &j.pos.z, &j.orient.x, &j.orient.y, &j.orient.z)==6)
                         {
@@ -335,7 +346,7 @@ struct md5 : skelloader<md5>
                             basejoints.add(j);
                         }
                     }
-                    if(basejoints.length()!=skel->numbones) { delete f; if(animdata) delete[] animdata; return NULL; }
+                    if(basejoints.length()!=skel->numbones) { if(animdata) delete[] animdata; return NULL; }
                     animbones = new dualquat[(skel->numframes+animframes)*skel->numbones];
                     if(skel->framebones)
                     {
@@ -353,11 +364,12 @@ struct md5 : skelloader<md5>
                 }
                 else if(sscanf(buf, " frame %d", &tmp)==1)
                 {
-                    for(int numdata = 0; f->getline(buf, sizeof(buf)) && buf[0]!='}';)
+                    for (int numdata = 0; (line = f->getLine(2048)) && !line->starts_with('}');)
                     {
-                        for(char *src = buf, *next = src; numdata < animdatalen; numdata++, src = next)
+                        buf = line->c_str();
+                        for(const char *src = buf, *next = src; numdata < animdatalen; numdata++, src = next)
                         {
-                            animdata[numdata] = strtod(src, &next);
+                            animdata[numdata] = strtod(src, (char**)&next);
                             if(next <= src) break;
                         }
                     }
@@ -391,7 +403,6 @@ struct md5 : skelloader<md5>
             }
 
             if(animdata) delete[] animdata;
-            delete f;
 
             return sa;
         }

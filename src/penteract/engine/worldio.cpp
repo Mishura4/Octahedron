@@ -912,12 +912,15 @@ COMMAND(savecurrentmap, "");
 void writeobj(char *name)
 {
     defformatstring(fname, "%s.obj", name);
-    stream *f = openfile(path(fname), "w");
+    auto f = g_engine->fileSystem().open(
+      name,
+      Octahedron::OpenFlags::OUTPUT | Octahedron::OpenFlags::BINARY
+    );
     if(!f) return;
-    f->printf("# obj file of Cube 2 level\n\n");
-    defformatstring(mtlname, "%s.mtl", name);
-    path(mtlname);
-    f->printf("mtllib %s\n\n", mtlname);
+    f->put("# obj file of Cube 2 level\n\n");
+    std::filesystem::path mtlname{std::filesystem::weakly_canonical(name)};
+
+    f->put(fmt::format("mtllib {}.mtl\n\n", mtlname));
     vector<vec> verts, texcoords;
     hashtable<vec, int> shareverts(1<<16), sharetc(1<<16);
     hashtable<int, vector<ivec2> > mtls(1<<8);
@@ -960,47 +963,57 @@ void writeobj(char *name)
     {
         vec v = verts[i];
         v.add(center);
-        if(v.y != floor(v.y)) f->printf("v %.3f ", -v.y); else f->printf("v %d ", int(-v.y));
-        if(v.z != floor(v.z)) f->printf("%.3f ", v.z); else f->printf("%d ", int(v.z));
-        if(v.x != floor(v.x)) f->printf("%.3f\n", v.x); else f->printf("%d\n", int(v.x));
+        if (v.y != floor(v.y))
+            f->put(fmt::format("v {:.3} ", -v.y));
+        else
+            f->put(fmt::format("v {} ", int(-v.y)));
+        if (v.z != floor(v.z))
+            f->put(fmt::format("{:.3} ", v.z));
+        else
+            f->put(fmt::format("{} ", int(v.z)));
+        if (v.x != floor(v.x))
+            f->put(fmt::format("{:.3}\n", v.x));
+        else
+            f->put(fmt::format("{}\n", int(v.x)));
     }
-    f->printf("\n");
+    f->put("\n");
     loopv(texcoords)
     {
         const vec &tc = texcoords[i];
-        f->printf("vt %.6f %.6f\n", tc.x, 1-tc.y);
+        f->put(fmt::format("vt {:.6} {:.6}\n", tc.x, 1-tc.y));
     }
-    f->printf("\n");
+    f->put("\n");
 
     usedmtl.sort();
     loopv(usedmtl)
     {
         vector<ivec2> &keys = mtls[usedmtl[i]];
-        f->printf("g slot%d\n", usedmtl[i]);
-        f->printf("usemtl slot%d\n\n", usedmtl[i]);
+        f->put(fmt::format("g slot{}\n", usedmtl[i]));
+        f->put(fmt::format("usemtl slot{}\n\n", usedmtl[i]));
         for(int i = 0; i < keys.length(); i += 3)
         {
-            f->printf("f");
-            loopk(3) f->printf(" %d/%d", keys[i+2-k].x+1, keys[i+2-k].y+1);
-            f->printf("\n");
+            f->put("f");
+            loopk(3) f->put(fmt::format(" {}/{}", keys[i+2-k].x+1, keys[i+2-k].y+1));
+            f->put("\n");
         }
-        f->printf("\n");
+        f->put("\n");
     }
-    delete f;
 
-    f = openfile(mtlname, "w");
+    f = g_engine->fileSystem().open(
+      mtlname.string(),
+      Octahedron::OpenFlags::OUTPUT | Octahedron::OpenFlags::BINARY
+    );
     if(!f) return;
-    f->printf("# mtl file of Cube 2 level\n\n");
+    f->put("# mtl file of Cube 2 level\n\n");
     loopv(usedmtl)
     {
         VSlot &vslot = lookupvslot(usedmtl[i], false);
-        f->printf("newmtl slot%d\n", usedmtl[i]);
-        f->printf("map_Kd %s\n", vslot.slot->sts.empty() ? notexture->name : path(makerelpath("media", vslot.slot->sts[0].name)));
-        f->printf("\n");
+        f->put(fmt::format("newmtl slot{}\n", usedmtl[i]));
+        f->put(fmt::format("map_Kd {}\n", vslot.slot->sts.empty() ? notexture->name : path(makerelpath("media", vslot.slot->sts[0].name))));
+        f->put("\n");
     }
-    delete f;
 
-    conoutf("generated model %s", fname);
+    conoutf("generated model {}", fname);
 }
 
 COMMAND(writeobj, "s");
@@ -1094,22 +1107,32 @@ void writecollideobj(char *name)
     }
 
     defformatstring(fname, "%s.obj", name);
-    stream *f = openfile(path(fname), "w");
+    auto f = g_engine->fileSystem().open(
+      name,
+      Octahedron::OpenFlags::OUTPUT
+    );
     if(!f) return;
-    f->printf("# obj file of Cube 2 collide model\n\n");
+    f->put("# obj file of Cube 2 collide model\n\n");
     loopv(verts)
     {
         vec v = xform.transform(verts[i]);
-        if(v.y != floor(v.y)) f->printf("v %.3f ", -v.y); else f->printf("v %d ", int(-v.y));
-        if(v.z != floor(v.z)) f->printf("%.3f ", v.z); else f->printf("%d ", int(v.z));
-        if(v.x != floor(v.x)) f->printf("%.3f\n", v.x); else f->printf("%d\n", int(v.x));
+        if (v.y != floor(v.y))
+            f->put(fmt::format("v {:.3} ", -v.y));
+        else
+            f->put(fmt::format("v {} ", int(-v.y)));
+        if (v.z != floor(v.z))
+            f->put(fmt::format("{:.3} ", v.z));
+        else
+            f->put(fmt::format("{} ", int(v.z)));
+        if (v.x != floor(v.x))
+            f->put(fmt::format("{:.3}\n", v.x));
+        else
+            f->put(fmt::format("{}\n", int(v.x)));
     }
-    f->printf("\n");
+    f->put("\n");
     for(int i = 0; i < tris.length(); i += 3)
-       f->printf("f %d %d %d\n", tris[i+2]+1, tris[i+1]+1, tris[i]+1);
-    f->printf("\n");
-
-    delete f;
+       f->put(fmt::format("f {} {} {}\n", tris[i+2]+1, tris[i+1]+1, tris[i]+1));
+    f->put("\n");
 
     conoutf("generated collide model %s", fname);
 }

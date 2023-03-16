@@ -137,7 +137,7 @@ namespace
 
 void Engine::setLogFile(std::string_view file)
 {
-  auto stream = _filesystem.open(file, std::ios::out | std::ios::trunc);
+  auto stream = _filesystem.open(file, OpenFlags::OUTPUT | OpenFlags::TRUNCATE);
 
   if (!stream)
   {

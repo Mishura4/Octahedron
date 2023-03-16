@@ -1948,3 +1948,21 @@ static inline float sin360(int angle) { return sincos360[angle].y; }
 static inline float tan360(int angle) { const vec2 &sc = sincos360[angle]; return sc.y/sc.x; }
 static inline float cotan360(int angle) { const vec2 &sc = sincos360[angle]; return sc.x/sc.y; }
 
+
+#include "IO/IOInterface.h"
+
+namespace Octahedron
+{
+    template <>
+    struct Serializer<vec2>
+    {
+        template<typename T>
+        requires (readable<T>)
+        bool get(IOInterface<T> *interface, vec2& vec) const
+        {
+            if (!interface->get(vec.x) || !interface->get(vec.y))
+              return (false);
+            return (true);
+        }
+    };
+}

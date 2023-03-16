@@ -193,7 +193,7 @@ auto FileSystem::_resolvePath(std::string_view file_name, BitSet<OpenFlags> sear
     return {std::nullopt};
   if (!_home_dir.empty())
   {
-    stdfs::path path = stdfs::weakly_canonical(_home_dir / given);
+    stdfs::path path = stdfs::absolute(_home_dir / given);
 
     if ((search_mode & OpenFlags::OUTPUT) || _isAccessible(path, search_mode))
       return {path};
@@ -202,7 +202,7 @@ auto FileSystem::_resolvePath(std::string_view file_name, BitSet<OpenFlags> sear
     return {std::nullopt};
   for (const stdfs::path &dir : packageDirs())
   {
-    stdfs::path path = stdfs::weakly_canonical(dir / given);
+    stdfs::path path = stdfs::absolute(dir / given);
 
     if (_isAccessible(path, search_mode))
       return {path};
@@ -255,7 +255,7 @@ bool FileSystem::createPath(std::string_view path)
 
 bool FileSystem::_createPath(const stdfs::path &path)
 {
-  if (_isAccessible(path, OpenFlags::OUTPUT))
+  if (_isAccessible(path))
     return (true);
   return (stdfs::create_directories(path));
 }

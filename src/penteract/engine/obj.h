@@ -1,3 +1,7 @@
+#include "engine.h"
+
+#include "IO/FileStream.h"
+
 struct obj;
 
 struct obj : vertloader<obj>
@@ -11,13 +15,13 @@ struct obj : vertloader<obj>
 
     struct objmeshgroup : vertmeshgroup
     {
-        void parsevert(char *s, vector<vec> &out)
+        void parsevert(const char *s, vector<vec> &out)
         {
             vec &v = out.add(vec(0, 0, 0));
             while(isalpha(*s)) s++;
             loopi(3)
             {
-                v[i] = strtod(s, &s);
+                v[i] = strtod(s, (char**)&s);
                 while(isspace(*s)) s++;
                 if(!*s) break;
             }
@@ -28,7 +32,10 @@ struct obj : vertloader<obj>
             int len = strlen(filename);
             if(len < 4 || strcasecmp(&filename[len-4], ".obj")) return false;
 
-            stream *file = openfile(filename, "rb");
+            auto file = g_engine->fileSystem().open(
+              filename,
+              Octahedron::OpenFlags::INPUT | Octahedron::OpenFlags::BINARY
+            );
             if(!file) return false;
 
             name = newstring(filename);
@@ -36,7 +43,6 @@ struct obj : vertloader<obj>
             numframes = 1;
 
             vector<vec> attrib[3];
-            char buf[512];
 
             hashtable<ivec, int> verthash(1<<11);
             vector<vert> verts;
@@ -80,9 +86,9 @@ struct obj : vertloader<obj>
 
             string meshname = "";
             vertmesh *curmesh = NULL;
-            while(file->getline(buf, sizeof(buf)))
+            while(auto line = file->getLine(2048))
             {
-                char *c = buf;
+                const char *c = line->c_str();
                 while(isspace(*c)) c++;
                 switch(*c)
                 {
@@ -96,7 +102,7 @@ struct obj : vertloader<obj>
                     {
                         while(isalpha(*c)) c++;
                         while(isspace(*c)) c++;
-                        char *name = c;
+                        const char *name = c;
                         size_t namelen = strlen(name);
                         while(namelen > 0 && isspace(name[namelen-1])) namelen--;
                         copystring(meshname, name, min(namelen+1, sizeof(meshname)));
@@ -117,7 +123,7 @@ struct obj : vertloader<obj>
                             ivec vkey(-1, -1, -1);
                             loopi(3)
                             {
-                                vkey[i] = strtol(c, &c, 10);
+                              vkey[i] = strtol(c, (char**) & c, 10);
                                 if(vkey[i] < 0) vkey[i] = attrib[i].length() + vkey[i];
                                 else vkey[i]--;
                                 if(!attrib[i].inrange(vkey[i])) vkey[i] = -1;
@@ -154,8 +160,6 @@ struct obj : vertloader<obj>
             }
 
             if(curmesh) FLUSHMESH;
-
-            delete file;
 
             return true;
         }

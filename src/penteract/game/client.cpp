@@ -250,15 +250,14 @@ namespace game
     void saveauthkeys()
     {
         string fname = "config/auth.cfg";
-        stream *f = openfile(path(fname), "w");
+        auto f = g_engine->fileSystem().open(path(fname), Octahedron::OpenFlags::OUTPUT);
         if(!f) { conoutf(CON_ERROR, "failed to open %s for writing", fname); return; }
         loopv(authkeys)
         {
             authkey *a = authkeys[i];
-            f->printf("authkey %s %s %s\n", escapestring(a->name), escapestring(a->key), escapestring(a->desc));
+            f->put(fmt::format("authkey {} {} {}\n", escapestring(a->name), escapestring(a->key), escapestring(a->desc)));
         }
         conoutf("saved authkeys to %s", fname);
-        delete f;
     }
     COMMAND(saveauthkeys, "");
 
@@ -2060,14 +2059,21 @@ namespace game
                 }
                 int len = strlen(fname);
                 if(len < 4 || strcasecmp(&fname[len-4], ".dmo")) concatstring(fname, ".dmo");
-                stream *demo = NULL;
-                if(const char *buf = server::getdemofile(fname, true)) demo = openrawfile(buf, "wb");
-                if(!demo) demo = openrawfile(fname, "wb");
+                std::unique_ptr<Octahedron::FileStream> demo{nullptr};
+                if (const char *buf = server::getdemofile(fname, true))
+                    demo = g_engine->fileSystem().open(
+                      buf,
+                      Octahedron::OpenFlags::OUTPUT | Octahedron::OpenFlags::BINARY
+                    );
+                if (!demo)
+                    demo = g_engine->fileSystem().open(
+                      path(fname),
+                      Octahedron::OpenFlags::OUTPUT | Octahedron::OpenFlags::BINARY
+                    );
                 if(!demo) return;
                 conoutf("received demo \"%s\"", fname);
                 ucharbuf b = p.subbuf(p.remaining());
                 demo->write(b.buf, b.maxlen);
-                delete demo;
                 break;
             }
 
@@ -2078,12 +2084,14 @@ namespace game
                 copystring(oldname, getclientmap());
                 defformatstring(mname, "getmap_%d", lastmillis);
                 defformatstring(fname, "media/map/%s.ogz", mname);
-                stream *map = openrawfile(path(fname), "wb");
+                auto map = g_engine->fileSystem().open(
+                  path(fname),
+                  Octahedron::OpenFlags::OUTPUT | Octahedron::OpenFlags::BINARY
+                );
                 if(!map) return;
                 conoutf("received map");
                 ucharbuf b = p.subbuf(p.remaining());
                 map->write(b.buf, b.maxlen);
-                delete map;
                 if(load_world(mname, oldname[0] ? oldname : NULL))
                     entities::spawnitems(true);
                 g_engine->fileSystem().remove(fname);
@@ -2177,7 +2185,10 @@ namespace game
         defformatstring(mname, "sendmap_%d", lastmillis);
         save_world(mname, true);
         defformatstring(fname, "media/map/%s.ogz", mname);
-        stream *map = openrawfile(path(fname), "rb");
+        auto map = g_engine->fileSystem().open(
+          path(fname),
+          Octahedron::OpenFlags::INPUT | Octahedron::OpenFlags::BINARY
+        );
         if(map)
         {
             stream::offset len = map->size();
@@ -2185,10 +2196,9 @@ namespace game
             else if(len <= 0) conoutf(CON_ERROR, "could not read map");
             else
             {
-                sendfile(-1, 2, map);
+                sendfile(-1, 2, map.get());
                 if(needclipboard >= 0) needclipboard++;
             }
-            delete map;
         }
         else
             conoutf(CON_ERROR, "could not read map");

@@ -150,6 +150,10 @@ target_link_libraries(penteract PUBLIC enet)
 target_link_libraries(penteract PUBLIC zlib)
 target_link_libraries(penteract PUBLIC ${OPENGL_LIBRARIES})
 
+#target_compile_options(penteract PUBLIC $<$<CONFIG:RelWithDebInfo>:-fsanitize=address>)
+#target_link_options(penteract PUBLIC <$<CONFIG:RelWithDebInfo>:-fsanitize=address>)
+
+
 if(WIN32)
   target_link_libraries(penteract PUBLIC wsock32 ws2_32)
 endif()

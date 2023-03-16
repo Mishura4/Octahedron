@@ -49,6 +49,17 @@ auto SeekableStream::toRWops() -> ManagedResource<SDL_RWops *, RWopsCleaner>
 {
   SDL_RWops *rw = SDL_AllocRW();
 
+  struct toto
+  {
+      unsigned char test[5];
+      unsigned char foo;
+      unsigned char foobar[4];
+  };
+
+  toto test;
+
+  get(test);
+
   if (!rw)
     return {nullptr};
   rw->hidden.unknown.data1 = this;
@@ -59,19 +70,9 @@ auto SeekableStream::toRWops() -> ManagedResource<SDL_RWops *, RWopsCleaner>
   return (rw);
 }
 
-size_t IOStream::read(std::byte* buf, size_t size)
-{
-  return (read({buf, size}));
-}
-
-size_t IOStream::write(const std::byte *buf, size_t size)
-{
-  return (write({buf, size}));
-}
-
 size_t SeekableStream::tell()
 {
-  return {std::numeric_limits<size_t>::max()};
+  return (std::numeric_limits<size_t>::max());
 }
 
 size_t SeekableStream::size()

@@ -1,6 +1,7 @@
 // the interface the game uses to access the engine
 
 #include "Engine/Engine.h"
+#include "IO/FileStream.h"
 
 using Octahedron::g_engine;
 
@@ -482,7 +483,7 @@ enum { DISC_NONE = 0, DISC_EOP, DISC_LOCAL, DISC_KICK, DISC_MSGERR, DISC_IPBAN, 
 extern void *getclientinfo(int i);
 extern ENetPeer *getclientpeer(int i);
 extern ENetPacket *sendf(int cn, int chan, const char *format, ...);
-extern ENetPacket *sendfile(int cn, int chan, stream *file, const char *format = "", ...);
+extern ENetPacket *sendfile(int cn, int chan, Octahedron::FileStream *file, const char *format = "", ...);
 extern void sendpacket(int cn, int chan, ENetPacket *packet, int exclude = -1);
 extern void flushserver(bool force);
 extern int getservermtu();

@@ -118,10 +118,13 @@ namespace Octahedron
 
     template <typename T>
     concept registry_default_ctor_helper = std::is_same_v<T, registry_default_ctor_helper_s>;
-  }
+  }  // namespace _
 
   template <typename T>
   constexpr auto registry_key_get = T::key;
+
+  template <typename T>
+  using field_value_type = T::value_type;
 
   template <typename... Fields>
   struct Registry : private Fields...
@@ -143,7 +146,7 @@ namespace Octahedron
     }
 
     using key_list = Octahedron::value_list<registry_key_get<Fields>...>;
-    using value_type_list = Octahedron::type_list<typename Fields::value_type...>;
+    using value_type_list = Octahedron::type_list<field_value_type<Fields>...>;
     using field_type_list = Octahedron::type_list<Fields...>;
 
     template <Octahedron::StringLiteral key>

@@ -90,8 +90,6 @@ namespace Octahedron
       virtual uint32 getCRC() { return 0; }
 
       static std::string flagsToOpenMode(BitSet<OpenFlags> mode);
-
-      auto getLine(size_t max_size = std::string::npos) -> std::optional<std::string> override;
   };
 
   class RawFileStream : public FileStream

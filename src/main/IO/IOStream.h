@@ -25,17 +25,53 @@ namespace Octahedron
     public:
       virtual ~IOStream() = default;
 
+      using IOInterface<IOStream>::get;
+      using IOInterface<IOStream>::put;
+
       //virtual size_t rawtell();
 
       //virtual size_t rawsize() { return size(); }
+
+      template <typename T>
+      requires(std::is_scalar_v<T> && !std::same_as<T, std::byte>)
+      size_t read(std::span<T> values)
+      {
+        std::byte *data = reinterpret_cast<std::byte *>(values.data());
+
+        return (read(std::span{data, values.size() * sizeof(T)}) / sizeof(T));
+      }
+
+      template <typename T>
+      requires(std::is_scalar_v<T>)
+      size_t read(T *values, size_t size)
+      {
+        std::byte *data = reinterpret_cast<std::byte *>(values);
+
+        return (read(std::span{data, size * sizeof(T)}) / sizeof(T));
+      }
+
+      template <typename T>
+      requires(std::is_scalar_v<T> && !std::same_as<T, std::byte>)
+      size_t write(std::span<const T> values)
+      {
+        const std::byte *data = reinterpret_cast<const std::byte *>(values.data());
+
+        return (write(std::span{data, values.size() * sizeof(T)}) / sizeof(T));
+      }
+
+      template <typename T>
+      requires(std::is_scalar_v<T>)
+      size_t write(const T *values, size_t size)
+      {
+        const std::byte *data = reinterpret_cast<const std::byte *>(values);
+
+        return (write(std::span{data, size * sizeof(T)}) / sizeof(T));
+      }
 
       virtual size_t read(std::span<std::byte> buf)        = 0;
       virtual size_t write(std::span<const std::byte> buf) = 0;
 
       virtual bool flush() = 0;
-
-      size_t read(std::byte *buf, size_t size);
-      size_t write(const std::byte *buf, size_t size);
   };
 
   class SeekableStream : public IOStream
@@ -46,12 +82,12 @@ namespace Octahedron
 
       virtual ~SeekableStream() = default;
 
-      virtual size_t tell() = 0;
+      virtual size_t tell()                                 = 0;
       virtual bool seek(ssize_t pos, int whence = SEEK_SET) = 0;
 
       virtual size_t size();
 
-      virtual auto getLine(size_t max_size = std::string::npos) -> std::optional<std::string>;
+      virtual auto getLine(size_t max_size = std::string::npos) -> std::optional<std::string> = 0;
 
       auto toRWops() -> ManagedResource<SDL_RWops *, RWopsCleaner>;
   };

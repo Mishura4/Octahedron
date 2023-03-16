@@ -1,3 +1,5 @@
+#include "engine.h"
+
 struct smd;
 
 struct smdbone
@@ -24,7 +26,7 @@ struct smd : skelloader<smd>
         {
         }
 
-        bool skipcomment(char *&curbuf)
+        bool skipcomment(const char *&curbuf)
         {
             while(*curbuf && isspace(*curbuf)) curbuf++;
             switch(*curbuf)
@@ -42,17 +44,17 @@ struct smd : skelloader<smd>
             return false;
         }
 
-        void skipsection(stream *f, char *buf, size_t bufsize)
+        void skipsection(Octahedron::FileStream *f, std::optional<std::string> &line)
         {
-            while(f->getline(buf, bufsize))
+            while(line = f->getLine(2048))
             {
-                char *curbuf = buf;
+                const char *curbuf = line->c_str();
                 if(skipcomment(curbuf)) continue;
                 if(!strncmp(curbuf, "end", 3)) break;
             }
         }
 
-        void readname(char *&curbuf, char *name, size_t namesize)
+        void readname(const char *&curbuf, char *name, size_t namesize)
         {
             char *curname = name;
             while(*curbuf && isspace(*curbuf)) curbuf++;
@@ -68,17 +70,17 @@ struct smd : skelloader<smd>
             *curname = '\0';
         }
 
-        void readnodes(stream *f, char *buf, size_t bufsize, vector<smdbone> &bones)
+        void readnodes(Octahedron::FileStream *f, std::optional<std::string> &line, vector<smdbone> &bones)
         {
-            while(f->getline(buf, bufsize))
+            while(line = f->getLine(2048))
             {
-                char *curbuf = buf;
+                const char *curbuf = line->c_str();
                 if(skipcomment(curbuf)) continue;
                 if(!strncmp(curbuf, "end", 3)) break;
-                int id = strtol(curbuf, &curbuf, 10);
+                int id = strtol(curbuf, (char**) & curbuf, 10);
                 string name;
                 readname(curbuf, name, sizeof(name));
-                int parent = strtol(curbuf, &curbuf, 10);
+                int parent = strtol(curbuf, (char **) &curbuf, 10);
                 if(id < 0 || id > 255 || parent > 255 || !name[0]) continue;
                 while(!bones.inrange(id)) bones.add();
                 smdbone &bone = bones[id];
@@ -87,7 +89,7 @@ struct smd : skelloader<smd>
             }
         }
 
-        void readmaterial(char *&curbuf, char *name, size_t namesize)
+        void readmaterial(const char *&curbuf, char *name, size_t namesize)
         {
             char *curname = name;
             while(*curbuf && isspace(*curbuf)) curbuf++;
@@ -143,14 +145,24 @@ struct smd : skelloader<smd>
             smdvertkey(smdmeshdata *mesh) : mesh(mesh) {}
         };
 
-        void readtriangles(stream *f, char *buf, size_t bufsize)
+        void readtriangles(Octahedron::FileStream *f, std::optional<std::string> &line)
         {
             smdmeshdata *curmesh = NULL;
             hashtable<const char *, smdmeshdata> materials(1<<6);
             hashset<int> verts(1<<12);
-            while(f->getline(buf, bufsize))
+            const char *buf;
+            auto getline = [&]()
             {
-                char *curbuf = buf;
+              line = f->getLine(2048);
+              if (!line)
+                return (false);
+              buf = line->c_str();
+              return (true);
+            };
+
+            while(getline())
+            {
+                const char *curbuf = line->c_str();
                 if(skipcomment(curbuf)) continue;
                 if(!strncmp(curbuf, "end", 3)) break;
                 string material;
@@ -171,10 +183,10 @@ struct smd : skelloader<smd>
                 tri curtri;
                 loopi(3)
                 {
-                    char *curbuf;
+                    const char *curbuf;
                     do
                     {
-                        if(!f->getline(buf, bufsize)) goto endsection;
+                        if(!getline()) goto endsection;
                         curbuf = buf;
                     } while(skipcomment(curbuf));
                     smdvertkey key(curmesh);
@@ -211,12 +223,12 @@ struct smd : skelloader<smd>
             enumerate(materials, smdmeshdata, data, data.finalize());
         }
 
-        void readskeleton(stream *f, char *buf, size_t bufsize)
+        void readskeleton(Octahedron::FileStream *f, std::optional<std::string> &line)
         {
             int frame = -1;
-            while(f->getline(buf, bufsize))
+            while(auto line = f->getLine(2048))
             {
-                char *curbuf = buf;
+                const char *curbuf = line->c_str();
                 if(skipcomment(curbuf)) continue;
                 if(sscanf(curbuf, " time %d", &frame) == 1) continue;
                 else if(!strncmp(curbuf, "end", 3)) break;
@@ -247,24 +259,25 @@ struct smd : skelloader<smd>
 
         bool loadmesh(const char *filename)
         {
-            stream *f = openfile(filename, "r");
-            if(!f) return false;
+            auto f = g_engine->fileSystem().open(filename, Octahedron::OpenFlags::INPUT);
+            if (!f)
+                return false;
 
-            char buf[512];
             int version = -1;
-            while(f->getline(buf, sizeof(buf)))
+            while(auto line = f->getLine(2048))
             {
-                char *curbuf = buf;
+                const char *buf = line->c_str();
+                const char *curbuf = line->c_str();
                 if(skipcomment(curbuf)) continue;
                 if(sscanf(curbuf, " version %d", &version) == 1)
                 {
-                    if(version != 1) { delete f; return false; }
+                    if(version != 1) { return false; }
                 }
                 else if(!strncmp(curbuf, "nodes", 5))
                 {
-                    if(skel->numbones > 0) { skipsection(f, buf, sizeof(buf)); continue; }
+                    if(skel->numbones > 0) { skipsection(f.get(), line); continue; }
                     vector<smdbone> bones;
-                    readnodes(f, buf, sizeof(buf), bones);
+                    readnodes(f.get(), line, bones);
                     if(bones.empty()) continue;
                     skel->numbones = bones.length();
                     skel->bones = new boneinfo[skel->numbones];
@@ -278,28 +291,27 @@ struct smd : skelloader<smd>
                     skel->linkchildren();
                 }
                 else if(!strncmp(curbuf, "triangles", 9))
-                    readtriangles(f, buf, sizeof(buf));
+                    readtriangles(f.get(), line);
                 else if(!strncmp(curbuf, "skeleton", 8))
                 {
-                    if(skel->shared > 1) skipsection(f, buf, sizeof(buf));
-                    else readskeleton(f, buf, sizeof(buf));
+                    if(skel->shared > 1) skipsection(f.get(), line);
+                    else readskeleton(f.get(), line);
                 }
                 else if(!strncmp(curbuf, "vertexanimation", 15))
-                    skipsection(f, buf, sizeof(buf));
+                    skipsection(f.get(), line);
             }
 
             sortblendcombos();
 
-            delete f;
             return true;
         }
 
-        int readframes(stream *f, char *buf, size_t bufsize, vector<smdbone> &bones, vector<dualquat> &animbones)
+        int readframes(Octahedron::FileStream *f, std::optional<std::string> &line, vector<smdbone> &bones, vector<dualquat> &animbones)
         {
             int frame = -1, numframes = 0, lastbone = skel->numbones;
-            while(f->getline(buf, bufsize))
+            while(line = f->getLine(2048))
             {
-                char *curbuf = buf;
+                const char *curbuf = line->c_str();
                 if(skipcomment(curbuf)) continue;
                 int nextframe = -1;
                 if(sscanf(curbuf, " time %d", &nextframe) == 1)
@@ -353,32 +365,33 @@ struct smd : skelloader<smd>
             skelanimspec *sa = skel->findskelanim(filename);
             if(sa || skel->numbones <= 0) return sa;
 
-            stream *f = openfile(filename, "r");
-            if(!f) return NULL;
+            auto f = g_engine->fileSystem().open(filename, Octahedron::OpenFlags::INPUT);
+            if (!f)
+                return nullptr;
 
-            char buf[512];
             int version = -1;
             vector<smdbone> bones;
             vector<dualquat> animbones;
-            while(f->getline(buf, sizeof(buf)))
+            while(auto line = f->getLine(2048))
             {
-                char *curbuf = buf;
-                if(skipcomment(curbuf)) continue;
+                const char *curbuf = line->c_str();
+                if (skipcomment(curbuf))
+                    continue;
                 if(sscanf(curbuf, " version %d", &version) == 1)
                 {
-                    if(version != 1) { delete f; return NULL; }
+                    if(version != 1) { return NULL; }
                 }
                 else if(!strncmp(curbuf, "nodes", 5))
                 {
-                    readnodes(f, buf, sizeof(buf), bones);
-                    if(bones.length() != skel->numbones) { delete f; return NULL; }
+                    readnodes(f.get(), line, bones);
+                    if(bones.length() != skel->numbones) { return NULL; }
                 }
                 else if(!strncmp(curbuf, "triangles", 9))
-                    skipsection(f, buf, sizeof(buf));
+                    skipsection(f.get(), line);
                 else if(!strncmp(curbuf, "skeleton", 8))
-                    readframes(f, buf, sizeof(buf), bones, animbones);
+                    readframes(f.get(), line, bones, animbones);
                 else if(!strncmp(curbuf, "vertexanimation", 15))
-                    skipsection(f, buf, sizeof(buf));
+                    skipsection(f.get(), line);
             }
             int numframes = animbones.length() / skel->numbones;
             dualquat *framebones = new dualquat[(skel->numframes+numframes)*skel->numbones];
@@ -394,7 +407,7 @@ struct smd : skelloader<smd>
             sa->range = numframes;
             skel->numframes += numframes;
 
-            delete f;
+
 
             return sa;
         }

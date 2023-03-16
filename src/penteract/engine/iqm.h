@@ -1,3 +1,5 @@
+#include "engine.h"
+
 struct iqm;
 
 struct iqmheader
@@ -322,13 +324,15 @@ struct iqm : skelloader<iqm>
 
         bool loadiqm(const char *filename, bool doloadmesh, bool doloadanim)
         {
-            stream *f = openfile(filename, "rb");
+            auto f = g_engine->fileSystem().open(
+              filename,
+              Octahedron::OpenFlags::INPUT | Octahedron::OpenFlags::BINARY
+            );
             if(!f) return false;
 
             uchar *buf = NULL;
             iqmheader hdr;
-            if(f->read(&hdr, sizeof(hdr)) != sizeof(hdr) || memcmp(hdr.magic, "INTERQUAKEMODEL", sizeof(hdr.magic))) goto error;
-            lilswap(&hdr.version, (sizeof(hdr) - sizeof(hdr.magic))/sizeof(uint));
+            if(!f->get(hdr) || memcmp(hdr.magic, "INTERQUAKEMODEL", sizeof(hdr.magic))) goto error;
             if(hdr.version != 2) goto error;
             if(hdr.filesize > (16<<20)) goto error; // sanity check... don't load files bigger than 16 MB
             buf = new (false) uchar[hdr.filesize];
@@ -338,12 +342,10 @@ struct iqm : skelloader<iqm>
             if(doloadanim && !loadiqmanims(filename, hdr, buf)) goto error;
 
             delete[] buf;
-            delete f;
             return true;
 
         error:
             if(buf) delete[] buf;
-            delete f;
             return false;
         }
 

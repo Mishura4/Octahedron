@@ -1507,9 +1507,8 @@ void texblur(ImageData &s, int n, int r)
 
 bool canloadsurface(const char *name)
 {
-    stream *f = openfile(name, "rb");
+    auto f = g_engine->fileSystem().open(name, Octahedron::OpenFlags::INPUT | Octahedron::OpenFlags::BINARY);
     if(!f) return false;
-    delete f;
     return true;
 }
 
@@ -3376,6 +3375,88 @@ struct DDSURFACEDESC2
     uint dwTextureStage;
 };
 
+template <>
+struct Octahedron::Serializer<DDPIXELFORMAT>
+{
+    template <typename T>
+    requires(readable<T>)
+    bool get(IOInterface<T> *self, DDPIXELFORMAT &obj) const
+    {
+            return (self->get<Endianness::LITTLE>(
+              obj.dwSize,
+              obj.dwFlags,
+              obj.dwFourCC,
+              obj.dwRGBBitCount,
+              obj.dwRBitMask,
+              obj.dwGBitMask,
+              obj.dwBBitMask,
+              obj.dwRGBAlphaBitMask
+            ));
+    }
+
+    template <typename T>
+    requires(writeable<T>)
+    bool put(IOInterface<T> *self, const DDPIXELFORMAT &obj) const
+    {
+            return (self->put<Endianness::LITTLE>(
+              obj.dwSize,
+              obj.dwFlags,
+              obj.dwFourCC,
+              obj.dwRGBBitCount,
+              obj.dwRBitMask,
+              obj.dwGBitMask,
+              obj.dwBBitMask,
+              obj.dwRGBAlphaBitMask
+            ));
+    }
+};
+
+template <>
+struct Octahedron::Serializer<DDSURFACEDESC2>
+{
+    template <typename T>
+    requires(readable<T>)
+    auto get(IOInterface<T> *self, DDSURFACEDESC2 &obj) const
+    {
+        return (self->get<Endianness::LITTLE>(
+          obj.dwSize,
+          obj.dwFlags,
+          obj.dwHeight,
+          obj.dwWidth,
+          obj.lPitch,
+          obj.dwBackBufferCount,
+          obj.dwMipMapCount,
+          obj.dwAlphaBitDepth,
+          obj.dwEmptyFaceColor,
+          obj.ddckCKDestBlt,
+          obj.ddpfPixelFormat,
+          obj.ddsCaps,
+          obj.dwTextureStage
+        ));
+    }
+
+    template <typename T>
+    requires(writeable<T>)
+    auto put(IOInterface<T> *self, const DDSURFACEDESC2 &obj) const
+    {
+        return (self->put<Endianness::LITTLE>(
+          obj.dwSize,
+          obj.dwFlags,
+          obj.dwHeight,
+          obj.dwWidth,
+          obj.lPitch,
+          obj.dwBackBufferCount,
+          obj.dwMipMapCount,
+          obj.dwAlphaBitDepth,
+          obj.dwEmptyFaceColor,
+          obj.ddckCKDestBlt,
+          obj.ddpfPixelFormat,
+          obj.ddsCaps,
+          obj.dwTextureStage
+        ));
+    }
+};
+
 #define DECODEDDS(name, dbpp, initblock, writeval, nextval) \
 static void name(ImageData &s) \
 { \
@@ -3519,15 +3600,21 @@ DECODEDDS(decodergtc2, 2,
 
 bool loaddds(const char *filename, ImageData &image, int force)
 {
-    stream *f = openfile(filename, "rb");
-    if(!f) return false;
+    auto f = g_engine->fileSystem().open(
+      filename,
+      Octahedron::OpenFlags::INPUT | Octahedron::OpenFlags::BINARY
+    );
+    if(!f)
+      return false;
     GLenum format = GL_FALSE;
     uchar magic[4];
-    if(f->read(magic, 4) != 4 || memcmp(magic, "DDS ", 4)) { delete f; return false; }
+    if(f->get(magic, 4) != 4 || memcmp(magic, "DDS ", 4))
+      return false;
     DDSURFACEDESC2 d;
-    if(f->read(&d, sizeof(d)) != sizeof(d)) { delete f; return false; }
-    lilswap((uint *)&d, sizeof(d)/sizeof(uint));
-    if(d.dwSize != sizeof(DDSURFACEDESC2) || d.ddpfPixelFormat.dwSize != sizeof(DDPIXELFORMAT)) { delete f; return false; }
+    if (!f->get(d))
+      return false;
+    if(d.dwSize != sizeof(DDSURFACEDESC2) || d.ddpfPixelFormat.dwSize != sizeof(DDPIXELFORMAT))
+      return false;
     bool supported = false;
     if(d.ddpfPixelFormat.dwFlags & DDPF_FOURCC)
     {
@@ -3554,7 +3641,8 @@ bool loaddds(const char *filename, ImageData &image, int force)
                 break;
         }
     }
-    if(!format || (!supported && !force)) { delete f; return false; }
+    if (!format || (!supported && !force))
+        return false;
     if(dbgdds) conoutf(CON_DEBUG, "%s: format 0x%X, %d x %d, %d mipmaps", filename, format, d.dwWidth, d.dwHeight, d.dwMipMapCount);
     int bpp = 0;
     switch(format)
@@ -3571,8 +3659,7 @@ bool loaddds(const char *filename, ImageData &image, int force)
     }
     image.setdata(NULL, d.dwWidth, d.dwHeight, bpp, !supported || force > 0 ? 1 : d.dwMipMapCount, 4, format);
     size_t size = image.calcsize();
-    if(f->read(image.data, size) != size) { delete f; image.cleanup(); return false; }
-    delete f;
+    if(f->read(image.data, size) != size) { image.cleanup(); return false; }
     if(!supported || force > 0) switch(format)
     {
         case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
@@ -3643,8 +3730,11 @@ void gendds(char *infile, char *outfile)
         else concatstring(buf, ".dds");
         outfile = buf;
     }
+    auto f = g_engine->fileSystem().open(
+      outfile,
+      Octahedron::OpenFlags::OUTPUT | Octahedron::OpenFlags::BINARY
+    );
 
-    stream *f = openfile(path(outfile, true), "wb");
     if(!f) { conoutf(CON_ERROR, "failed writing to %s", outfile); return; }
 
     int csize = 0;
@@ -3682,12 +3772,9 @@ void gendds(char *infile, char *outfile)
         if(lh > 1) lh /= 2;
     }
 
-    lilswap((uint *)&d, sizeof(d)/sizeof(uint));
-
     f->write("DDS ", 4);
-    f->write(&d, sizeof(d));
+    f->put(d);
     f->write(data, csize);
-    delete f;
 
     delete[] data;
 
@@ -3697,16 +3784,16 @@ void gendds(char *infile, char *outfile)
 }
 COMMAND(gendds, "ss");
 
-void writepngchunk(stream *f, const char *type, uchar *data = NULL, uint len = 0)
+void writepngchunk(Octahedron::FileStream *f, const char *type, uchar *data = NULL, uint len = 0)
 {
-    f->putbig<uint>(len);
+    f->put<Octahedron::Endianness::BIG, uint>(len);
     f->write(type, 4);
     f->write(data, len);
 
     uint crc = crc32(0, Z_NULL, 0);
     crc = crc32(crc, (const Bytef *)type, 4);
     if(data) crc = crc32(crc, data, len);
-    f->putbig<uint>(crc);
+    f->put<Octahedron::Endianness::BIG, uint>(crc);
 }
 
 VARP(compresspng, 0, 9, 9);
@@ -3722,18 +3809,30 @@ void savepng(const char *filename, ImageData &image, bool flip)
         case 4: ctype = 6; break;
         default: conoutf(CON_ERROR, "failed saving png to %s", filename); return;
     }
-    stream *f = openfile(filename, "wb");
+    auto f = g_engine->fileSystem().open(
+      filename,
+      Octahedron::OpenFlags::OUTPUT | Octahedron::OpenFlags::BINARY
+    );
     if(!f) { conoutf(CON_ERROR, "could not write to %s", filename); return; }
 
     uchar signature[] = { 137, 80, 78, 71, 13, 10, 26, 10 };
-    f->write(signature, sizeof(signature));
+    f->put(signature);
+
+    using Endian = Octahedron::Endianness;
 
     struct pngihdr
     {
         uint width, height;
         uchar bitdepth, colortype, compress, filter, interlace;
-    } ihdr = { bigswap<uint>(image.w), bigswap<uint>(image.h), 8, ctype, 0, 0, 0 };
-    writepngchunk(f, "IHDR", (uchar *)&ihdr, 13);
+    } ihdr = {
+      Octahedron::byteswap<Endian::BIG>(uint(image.w)),
+      Octahedron::byteswap<Endian::BIG>(uint(image.h)),
+      8,
+      ctype,
+      0,
+      0,
+      0};
+    writepngchunk(f.get(), "IHDR", (uchar *)&ihdr, 13);
 
     stream::offset idat = f->tell();
     uint len = 0;
@@ -3787,20 +3886,18 @@ void savepng(const char *filename, ImageData &image, bool flip)
     deflateEnd(&z);
 
     f->seek(idat, SEEK_SET);
-    f->putbig<uint>(len);
+    f->put<Endian::BIG, uint>(len);
     f->seek(0, SEEK_END);
-    f->putbig<uint>(crc);
+    f->put<Endian::BIG, uint>(crc);
 
-    writepngchunk(f, "IEND");
+    writepngchunk(f.get(), "IEND");
 
-    delete f;
     return;
 
 cleanuperror:
     deflateEnd(&z);
 
 error:
-    delete f;
 
     conoutf(CON_ERROR, "failed saving png to %s", filename);
 }
@@ -3831,7 +3928,10 @@ void savetga(const char *filename, ImageData &image, bool flip)
         default: conoutf(CON_ERROR, "failed saving tga to %s", filename); return;
     }
 
-    stream *f = openfile(filename, "wb");
+    auto f = g_engine->fileSystem().open(
+      filename,
+      Octahedron::OpenFlags::OUTPUT | Octahedron::OpenFlags::BINARY
+    );
     if(!f) { conoutf(CON_ERROR, "could not write to %s", filename); return; }
 
     tgaheader hdr;
@@ -3842,7 +3942,7 @@ void savetga(const char *filename, ImageData &image, bool flip)
     hdr.height[0] = image.h&0xFF;
     hdr.height[1] = (image.h>>8)&0xFF;
     hdr.imagetype = compresstga ? 10 : 2;
-    f->write(&hdr, sizeof(hdr));
+    f->write((std::byte *)&hdr, sizeof(hdr));
 
     uchar buf[128*4];
     loopi(image.h)
@@ -3861,9 +3961,12 @@ void savetga(const char *filename, ImageData &image, bool flip)
                 }
                 if(run > 1)
                 {
-                    f->putchar(0x80 | (run-1));
-                    f->putchar(src[2]); f->putchar(src[1]); f->putchar(src[0]);
-                    if(image.bpp==4) f->putchar(src[3]);
+                    f->put(char(0x80 | (run-1)));
+                    f->put(src[2]);
+                    f->put(src[1]);
+                    f->put(src[0]);
+                    if(image.bpp==4)
+                      f->put(src[3]);
                     src += run*image.bpp;
                     remaining -= run;
                     if(remaining <= 0) break;
@@ -3873,7 +3976,7 @@ void savetga(const char *filename, ImageData &image, bool flip)
                     scan += image.bpp;
                     if(src[0]==scan[0] && src[1]==scan[1] && src[2]==scan[2] && (image.bpp!=4 || src[3]==scan[3])) break;
                 }
-                f->putchar(raw - 1);
+                f->put(char(raw - 1));
             }
             else raw = min(remaining, 128);
             uchar *dst = buf;
@@ -3890,8 +3993,6 @@ void savetga(const char *filename, ImageData &image, bool flip)
             remaining -= raw;
         }
     }
-
-    delete f;
 }
 
 enum
@@ -3930,21 +4031,27 @@ void saveimage(const char *filename, int format, ImageData &image, bool flip = f
             ImageData flipped(image.w, image.h, image.bpp, image.data);
             if(flip) texflip(flipped);
             SDL_Surface *s = wrapsurface(flipped.data, flipped.w, flipped.h, flipped.bpp);
-            if(!s) break;
-            stream *f = openfile(filename, "wb");
+            if (!s)
+                break;
+
+            auto f = g_engine->fileSystem().open(
+              filename,
+              Octahedron::OpenFlags::OUTPUT | Octahedron::OpenFlags::BINARY
+            );
             if(f)
             {
                 switch(format) {
                     case IMG_JPG:
 #if SDL_IMAGE_VERSION_ATLEAST(2, 0, 2)
-                        IMG_SaveJPG_RW(s, f->rwops(), 1, screenshotquality);
+                        IMG_SaveJPG_RW(s, f->toRWops(), 0, screenshotquality);
 #else
                         conoutf(CON_ERROR, "JPG screenshot support requires SDL_image 2.0.2");
 #endif
                         break;
-                    default: SDL_SaveBMP_RW(s, f->rwops(), 1); break;
+                    default:
+                        SDL_SaveBMP_RW(s, f->toRWops(), 0);
+                        break;
                 }
-                delete f;
             }
             SDL_FreeSurface(s);
             break;

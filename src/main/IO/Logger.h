@@ -181,22 +181,24 @@ namespace Octahedron
 
       void write(LogLevel level, std::string_view msg)
       {
-        // TODO: clean up casts
+        const std::byte *data = reinterpret_cast<const std::byte *>(msg.data());
 
+        if (!target)
+          return;
         if (prefix_generator)
         {
-          std::string &&prefix = prefix_generator(level, msg);
+          std::string prefix = prefix_generator(level, msg);
 
           target->write(reinterpret_cast<const std::byte *>(prefix.c_str()), prefix.size());
         }
-        target->write(reinterpret_cast<const std::byte *>(msg.data()), msg.size());
+        target->write(data, msg.size());
         if (suffix_generator)
         {
-          std::string &&suffix = suffix_generator(level, msg);
+          std::string suffix = suffix_generator(level, msg);
 
           target->write(reinterpret_cast<const std::byte *>(suffix.c_str()), suffix.size());
         }
-        target->write(reinterpret_cast<const std::byte *>("\n"), 1);
+        target->write("\n", 1);
         if constexpr (requires(T & t) { t.flush(); })
         {
           target->flush();

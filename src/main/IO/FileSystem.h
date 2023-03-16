@@ -37,14 +37,15 @@ namespace Octahedron
     {
         enum Values
         {
-          NONE     = bitflag(0),
-          INPUT    = bitflag(1),
-          OUTPUT   = bitflag(2),
-          APPEND   = bitflag(3),
-          TRUNCATE = bitflag(4),
-          BINARY   = bitflag(15),
+          NONE      = bitflag(0),
+          INPUT     = bitflag(1),
+          OUTPUT    = bitflag(2),
+          APPEND    = bitflag(3),
+          TRUNCATE  = bitflag(4),
+          BINARY    = bitflag(16),
+          TEMPORARY = bitflag(17),
 
-          DEFAULT = INPUT,
+          DEFAULT     = INPUT,
           MASK_CREATE = APPEND | TRUNCATE
         };
     };
@@ -95,13 +96,14 @@ namespace Octahedron
       auto openSDLRWops(std::string_view path, BitSet<OpenFlags> mode = OpenFlags::DEFAULT)
         -> SDL_RWops *;
 
-    private:
-      stdfs::path _home_dir{stdfs::current_path()};
-      std::vector<stdfs::path> _package_dirs{};
-
+      // public for now during API update - will be private soon
       auto
       _resolvePath(std::string_view file_name, BitSet<OpenFlags> mode = OpenFlags::DEFAULT) const
         -> std::optional<stdfs::path>;
+
+    private:
+      stdfs::path _home_dir{stdfs::current_path()};
+      std::vector<stdfs::path> _package_dirs{};
 
       bool
       _isAccessible(const stdfs::path &path, BitSet<OpenFlags> mode = OpenFlags::DEFAULT) const;

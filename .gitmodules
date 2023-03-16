@@ -28,3 +28,6 @@
 [submodule "dep/zstr"]
 	path = dep/zstr
 	url = https://github.com/mateidavid/zstr.git
+[submodule "dep/boost-pfr"]
+	path = dep/boost-pfr
+	url = git@github.com:boostorg/pfr.git

@@ -1,3 +1,5 @@
+#include "IO/FileStream.h"
+
 struct md3;
 
 struct md3frame
@@ -56,15 +58,16 @@ struct md3 : vertloader<md3>
     {
         bool load(const char *path, float smooth)
         {
-            stream *f = openfile(path, "rb");
-            if(!f) return false;
+          using enum Octahedron::OpenFlags;
+
+          auto f = Octahedron::FileSystem().open(path, INPUT | BINARY);
+          if (!f)
+            return false;
+
             md3header header;
-            f->read(&header, sizeof(md3header));
-            lilswap(&header.version, 1);
-            lilswap(&header.flags, 9);
+            f->get(header);
             if(strncmp(header.id, "IDP3", 4) != 0 || header.version != 15) // header check
             {
-                delete f;
                 conoutf(CON_ERROR, "md3: corrupted header");
                 return false;
             }
@@ -82,8 +85,7 @@ struct md3 : vertloader<md3>
 
                 md3meshheader mheader;
                 f->seek(mesh_offset, SEEK_SET);
-                f->read(&mheader, sizeof(md3meshheader));
-                lilswap(&mheader.flags, 10);
+                f->get(mheader);
 
                 m.name = newstring(mheader.name);
 
@@ -93,32 +95,29 @@ struct md3 : vertloader<md3>
                 loopj(m.numtris)
                 {
                     md3triangle tri;
-                    if(f->read(&tri, sizeof(md3triangle)) != sizeof(md3triangle)) // read the triangles
+                    if(!f->get(tri)) // read the triangles
                     {
                         memclear(&m.tris[j], (m.numtris - j) * sizeof(tri));
                         break;
                     }
-                    lilswap(tri.vertexindices, 3);
                     loopk(3) m.tris[j].vert[k] = (ushort)tri.vertexindices[k];
                 }
 
                 m.numverts = mheader.numvertices;
                 m.tcverts = new tcvert[m.numverts];
                 f->seek(mesh_offset + mheader.ofs_uv , SEEK_SET);
-                f->read(m.tcverts, m.numverts*2*sizeof(float)); // read the UV data
-                lilswap(&m.tcverts[0].tc.x, 2*m.numverts);
+                f->get(m.tcverts, m.numverts); // read the UV data
 
                 m.verts = new vert[numframes*m.numverts];
                 f->seek(mesh_offset + mheader.ofs_vertices, SEEK_SET);
                 loopj(numframes*m.numverts)
                 {
                     md3vertex v;
-                    if(f->read(&v, sizeof(md3vertex)) != sizeof(md3vertex)) // read the vertices
+                    if(!f->get(v)) // read the vertices
                     {
                         memclear(&m.verts[j], (numframes*m.numverts - j) * sizeof(vert));
                         break;
                     }
-                    lilswap(v.vertex, 4);
 
                     m.verts[j].pos = vec(v.vertex[0]/64.0f, -v.vertex[1]/64.0f, v.vertex[2]/64.0f);
 
@@ -141,12 +140,11 @@ struct md3 : vertloader<md3>
 
                 loopi(header.numframes*header.numtags)
                 {
-                    if(f->read(&tag, sizeof(md3tag)) != sizeof(md3tag))
+                    if(!f->get(tag))
                     {
                         memclear(&tags[i], (header.numframes*header.numtags - i) * sizeof(tag));
                         break;
                     }
-                    lilswap(tag.translation, 12);
                     if(tag.name[0] && i<header.numtags) tags[i].name = newstring(tag.name);
                     matrix4x3 &m = tags[i].matrix;
                     tag.translation[1] *= -1;
@@ -161,7 +159,6 @@ struct md3 : vertloader<md3>
                 }
             }
 
-            delete f;
             return true;
         }
     };

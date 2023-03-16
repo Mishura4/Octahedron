@@ -50,7 +50,7 @@ namespace Octahedron
   concept implicitly_convertible_to = requires { _::implicit_conversion_test<U>(std::declval<const T &>()); };
 
   template <typename T>
-  concept scoped_enum = std::is_enum_v<T> && !implicitly_convertible_to<std::underlying_type_t<T>>;
+  concept scoped_enum = std::is_enum_v<T> && !implicitly_convertible_to<T, std::underlying_type_t<T>>;
 
   template <typename T, typename U>
   requires(sizeof(T) < sizeof(U) && !std::is_reference_v<T> && std::is_unsigned_v<T> ||
@@ -64,14 +64,14 @@ namespace Octahedron
 
   template <typename T>
   requires(std::is_arithmetic_v<T> && std::is_signed_v<T> && !std::is_reference_v<T>)
-  [[msvc::intrinsice]] constexpr auto to_unsigned(T &&value) noexcept
+  [[msvc::intrinsic]] constexpr auto to_unsigned(T &&value) noexcept
   {
     return static_cast<std::make_unsigned_t<T>>(value);
   }
 
   template <typename T>
   requires(std::is_arithmetic_v<T> && !std::is_signed_v<T> && !std::is_reference_v<T>)
-  [[msvc::intrinsice]] constexpr auto to_signed(T &&value) noexcept
+  [[msvc::intrinsic]] constexpr auto to_signed(T &&value) noexcept
   {
     return static_cast<std::make_unsigned_t<T>>(value);
   }

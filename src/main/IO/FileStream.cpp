@@ -12,11 +12,10 @@ using namespace Octahedron;
 std::string FileStream::flagsToOpenMode(BitSet<OpenFlags> mode)
 {
   std::string mode_;
+  using enum OpenFlags;
 
-  switch (mode.value)
+  switch (mode.value & (INPUT | OUTPUT | APPEND | TRUNCATE))
   {
-    using enum OpenFlags;
-
     case INPUT:
       mode_ = "r";
       break;
@@ -87,6 +86,7 @@ auto RawFileStream::_open(const stdfs::path &path, BitSet<OpenFlags> mode, bool 
       std::filesystem::remove(path, err);
     };
   }
+  ret->_file = std::move(file);
   if (after && !after(ret.get()))
     log(LogLevel::WARN, "could not execute post-open function for mode {}", mode);
   return (ret);
@@ -163,10 +163,12 @@ auto RawFileStream::getLine(size_t max) -> std::optional<std::string>
   while (max > 0)
   {
     size_t step = std::min(max, BUFFER_SIZE);
-    read        = this->read(reinterpret_cast<std::byte *>(buffer.data()), step);
-    if (read == error_size)
+    if (!fgets(buffer.data(), step, _file.get()))
       return {std::nullopt};
+    size_t read = strlen(buffer.data());
     ret.append(buffer.data(), read);
+    if (read < step || buffer[read - 1] == '\n')
+      return (ret);
     max -= step;
   }
   return (ret);

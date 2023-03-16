@@ -504,7 +504,7 @@ int listfiles(const char *dir, const char *ext, vector<char *> &files)
     return dirs;
 }
 
-/* #ifndef STANDALONE
+#ifndef STANDALONE
 static Sint64 rwopsseek(SDL_RWops *rw, Sint64 pos, int whence)
 {
     stream *f = (stream *)rw->hidden.unknown.data1;
@@ -548,7 +548,7 @@ stream::offset stream::size()
     if(pos < 0 || !seek(0, SEEK_END)) return -1;
     endpos = tell();
     return pos == endpos || seek(pos, SEEK_SET) ? endpos : -1;
-}*/
+}
 
 bool stream::getline(char *str, size_t len)
 {
@@ -1135,21 +1135,51 @@ struct utf8stream : stream
 
     bool flush() { return file->flush(); }
 };
+#undef INPUT
+constexpr auto modetobitset = [](const char *mode) -> Octahedron::BitSet<Octahedron::OpenFlags>
+{
+  using of = Octahedron::OpenFlags;
+  Octahedron::BitSet<Octahedron::OpenFlags> f{0};
+
+  if (mode)
+  {
+    switch (mode[0])
+    {
+      case 'w':
+        f |= of::OUTPUT | of::TRUNCATE;
+        break;
+
+      case 'a':
+        f |= of::OUTPUT | of::APPEND;
+        break;
+
+      case 'r':
+        f |= of::INPUT;
+        break;
+
+      case 0:
+        return f;
+    }
+    if (mode[1] == 0)
+      return f;
+    if (mode[1] == '+' || mode[2] == '+')
+      f |= of::INPUT | of::OUTPUT;
+    if (mode[1] == 'b' || mode[2] == 'b')
+      f |= of::BINARY;
+  }
+  return f;
+};
 
 stream *openrawfile(const char *filename, const char *mode)
 {
-    using enum Octahedron::FileSystem::SearchMode;
-    using SearchMode = Octahedron::FileSystem::SearchMode;
-
-    auto oh_mode = std::string_view(mode).find('w') != std::string_view::npos
-    ? CREATE : DEFAULT;
-    auto found   = g_engine->fileSystem().findFile(filename, oh_mode);
-    if(!found) return NULL;
+    auto path = g_engine->fileSystem()._resolvePath(filename, modetobitset(mode));
+    if (!path)
+    return NULL;
     filestream *file = new filestream;
-    if (!file->open(found->string().c_str(), mode))
+    if (!file->open(path->string().c_str(), mode))
     {
-      delete file;
-      return NULL;
+    delete file;
+    return NULL;
     }
     return file;
 }
@@ -1165,13 +1195,9 @@ stream *openfile(const char *filename, const char *mode)
 
 stream *opentempfile(const char *name, const char *mode)
 {
-    using enum Octahedron::FileSystem::SearchMode;
-    using SearchMode = Octahedron::FileSystem::SearchMode;
-
-    auto oh_mode = std::string_view(mode).find('w') != std::string_view::npos ? CREATE : DEFAULT;
-    auto found   = g_engine->fileSystem().findFile(name, oh_mode);
+    auto path = g_engine->fileSystem()._resolvePath(name, modetobitset(mode));
     filestream *file = new filestream;
-    if(!file->opentemp(found ? found->string().c_str() : name, mode)) { delete file; return NULL; }
+    if(!file->opentemp(path ? path->string().c_str() : name, mode)) { delete file; return NULL; }
     return file;
 }
 
@@ -1195,22 +1221,24 @@ stream *openutf8file(const char *filename, const char *mode, stream *file)
 
 char *loadfile(const char *fn, size_t *size, bool utf8)
 {
-    stream *f = openfile(fn, "rb");
+    auto f = g_engine->fileSystem().open(
+      fn,
+      Octahedron::OpenFlags::INPUT | Octahedron::OpenFlags::BINARY
+    );
     if(!f) return NULL;
     stream::offset fsize = f->size();
-    if(fsize <= 0) { delete f; return NULL; }
+    if(fsize <= 0) { return NULL; }
     size_t len = fsize;
     char *buf = new (false) char[len+1];
-    if(!buf) { delete f; return NULL; }
+    if(!buf) { return NULL; }
     size_t offset = 0;
     if(utf8 && len >= 3)
     {
-        if(f->read(buf, 3) != 3) { delete f; delete[] buf; return NULL; }
+        if(f->read(buf, 3) != 3) { delete[] buf; return NULL; }
         if(((uchar *)buf)[0] == 0xEF && ((uchar *)buf)[1] == 0xBB && ((uchar *)buf)[2] == 0xBF) len -= 3;
         else offset += 3;
     }
     size_t rlen = f->read(&buf[offset], len-offset);
-    delete f;
     if(rlen != len-offset) { delete[] buf; return NULL; }
     if(utf8) len = decodeutf8((uchar *)buf, len, (uchar *)buf, len);
     buf[len] = '\0';

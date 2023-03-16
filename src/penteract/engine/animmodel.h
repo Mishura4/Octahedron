@@ -544,7 +544,17 @@ struct animmodel : model
 
         void calcbb(vec &bbmin, vec &bbmax, const matrix4x3 &t)
         {
-            looprendermeshes(mesh, m, m.calcbb(bbmin, bbmax, t));
+            do
+            {
+                loopv(meshes)
+                {
+                    mesh &m = *(mesh *) meshes[i];
+                    if (m.canrender || dbgcolmesh)
+                    {
+                        m.calcbb(bbmin, bbmax, t);
+                    }
+                }
+            } while (0);
         }
 
         void genBIH(vector<skin> &skins, vector<BIH::mesh> &bih, const matrix4x3 &t)
