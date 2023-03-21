@@ -1250,59 +1250,59 @@ bool waterpvsoccluded(int height)
     return false;
 }
 
-void saveviewcells(stream *f, viewcellnode &p)
+void saveviewcells(Octahedron::FileStream *f, viewcellnode &p)
 {
-    f->putchar(p.leafmask);
+		f->put<char>(p.leafmask);
     loopi(8)
     {
-        if(p.leafmask&(1<<i)) f->putlil<int>(p.children[i].pvs);
+        if(p.leafmask&(1<<i)) f->put<int>(p.children[i].pvs);
         else saveviewcells(f, *p.children[i].node);
     }
 }
 
-void savepvs(stream *f)
+void savepvs(Octahedron::FileStream *f)
 {
     uint totallen = pvsbuf.length() | (numwaterplanes>0 ? 0x80000000U : 0);
-    f->putlil<uint>(totallen);
+    f->put<uint>(totallen);
     if(numwaterplanes>0)
     {
-        f->putlil<uint>(numwaterplanes);
+        f->put<uint>(numwaterplanes);
         loopi(numwaterplanes)
         {
-            f->putlil<int>(waterplanes[i].height);
+            f->put<int>(waterplanes[i].height);
             if(waterplanes[i].height < 0) break;
         }
     }
-    loopv(pvs) f->putlil<ushort>(pvs[i].len);
+    loopv(pvs) f->put<ushort>(pvs[i].len);
     f->write(pvsbuf.getbuf(), pvsbuf.length());
     saveviewcells(f, *viewcells);
 }
 
-viewcellnode *loadviewcells(stream *f)
+viewcellnode *loadviewcells(Octahedron::FileStream *f)
 {
     viewcellnode *p = new viewcellnode;
-    p->leafmask = f->getchar();
+		p->leafmask			= f->get<char>();
     loopi(8)
     {
-        if(p->leafmask&(1<<i)) p->children[i].pvs = f->getlil<int>();
+        if(p->leafmask&(1<<i)) p->children[i].pvs = f->get<int>();
         else p->children[i].node = loadviewcells(f);
     }
     return p;
 }
 
-void loadpvs(stream *f, int numpvs)
+void loadpvs(Octahedron::FileStream * f, int numpvs)
 {
-    uint totallen = f->getlil<uint>();
+    uint totallen = f->get<uint>();
     if(totallen & 0x80000000U)
     {
         totallen &= ~0x80000000U;
-        numwaterplanes = f->getlil<uint>();
-        loopi(numwaterplanes) waterplanes[i].height = f->getlil<int>();
+        numwaterplanes = f->get<uint>();
+        loopi(numwaterplanes) waterplanes[i].height = f->get<int>();
     }
     int offset = 0;
     loopi(numpvs)
     {
-        ushort len = f->getlil<ushort>();
+        ushort len = f->get<ushort>();
         pvs.add(pvsdata(offset, len));
         offset += len;
     }

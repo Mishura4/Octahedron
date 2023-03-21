@@ -28,6 +28,12 @@ if (MSVC)
             _WIN32_WINNT=_WIN32_WINNT_WIN7
             WINVER=_WIN32_WINNT_WIN7)
 endif()
+
+target_precompile_headers(Octahedron PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/IO/IOInterface.h
+    ${CMAKE_CURRENT_LIST_DIR}/IO/FileStream.h
+)
+
 target_include_directories(Octahedron PUBLIC ${CMAKE_CURRENT_LIST_DIR})
 target_include_directories(Octahedron PUBLIC ${ZSTR_DIR})
 target_link_libraries(Octahedron PUBLIC SDL2-static)
@@ -35,11 +41,11 @@ target_link_libraries(Octahedron PUBLIC SDL2_image)
 target_link_libraries(Octahedron PUBLIC SDL2_mixer)
 target_link_libraries(Octahedron PUBLIC fmt)
 target_link_libraries(Octahedron PUBLIC Boost::pfr)
+target_link_libraries(Octahedron PUBLIC zlib)
 
 target_sources(Octahedron
     PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/Octahedron.h
         ${CMAKE_CURRENT_LIST_DIR}/Tools/ProtectedPtr.h
         ${CMAKE_CURRENT_LIST_DIR}/Engine/Engine.cpp
-    PUBLIC
- "Tools/Math.h" "Tools/StringLiteral.h" "Tools/Exception.h" "Engine/Engine.h" "Tools/ManagedResource.h" "IO/Logger.h" "IO/FileSystem.h" "IO/FileSystem.cpp" "Octahedron.cpp" "Base.h" "IO/IOStream.h" "IO/IOStream.cpp" "IO/FileStream.cpp" "IO/FileStream.h" "IO/IOInterface.h")
+ "Tools/Math.h" "Tools/StringLiteral.h" "Tools/Exception.h" "Engine/Engine.h" "Tools/ManagedResource.h" "IO/Logger.h" "IO/FileSystem.h" "IO/FileSystem.cpp" "Octahedron.cpp" "Base.h" "IO/IOStream.h" "IO/IOStream.cpp" "IO/FileStream.cpp" "IO/FileStream.h" "IO/IOInterface.h" "IO/GZFileStream.h" "IO/GZFileStream.cpp" "IO/RawFileStream.cpp" "IO/RawFileStream.h")

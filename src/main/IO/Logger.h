@@ -5,6 +5,7 @@
 #include <ostream>
 #include <type_traits>
 #include <vector>
+#include <ranges>
 
 #include <fmt/format.h>
 
@@ -12,6 +13,7 @@
 #include "../Tools/ManagedResource.h"
 
 #include "IOInterface.h"
+#include "../Tools/TypeList.h"
 
 #ifdef ERROR
 #  undef ERROR
@@ -43,27 +45,71 @@ namespace Octahedron
   concept logger_type = requires(T &t) {
     t.write(LogLevel::BASIC, ""sv);
     LogLevel{t.log_level};
-  };
+	};
+
+  template <typename T>
+	struct Formatter;
+	/*
+
+	template <typename T>
+	struct Formatter
+	{
+			constexpr Formatter() = default;
+
+			Formatter(const T &val) :
+					value(&val)
+			{
+
+			}
+
+			Formatter(const T *val) :
+				value(val)
+			{
+
+			}
+
+			template <typename ParseContext>
+			constexpr auto parse(ParseContext &ctx)
+			{
+				return (_formatter.parse(ctx));
+			}
+
+			template <typename FormatContext>
+			auto format(const Formatter &me, FormatContext &ctx)
+			{
+				return (ctx.out());
+			}
+
+		  const T *value{nullptr};
+			::fmt::formatter<T> _formatter{};
+	};*/
 
   template <typename T>
   struct loggable_helper
   {
-      using type = T;
+      static auto get(const T &u) noexcept
+			{
+				if constexpr (requires {Formatter<T>::exists;})
+					;// todo?
+				else
+					return (u);
+			}
 
-      [[msvc::intrinsic]] static type get(T u) noexcept { return (u); }
+			using type = std::remove_reference_t<decltype(get(std::declval<const T &>()))>;
+
   };
 
   template <typename T>
   requires(std::invocable<T>)
   struct loggable_helper<T>
   {
-      using type = std::invoke_result_t<T>;
+      using type = std::remove_reference_t<std::invoke_result_t<T>>;
 
       template <typename U>
       requires(std::same_as<std::remove_cvref_t<U>, std::remove_cvref_t<T>>)
-      static type get(U &&u) noexcept(std::is_nothrow_invocable_v<U>)
+      static auto get(U &&u) noexcept(std::is_nothrow_invocable_v<U>)
       {
-        return (std::invoke(u));
+        return (std::invoke(std::forward<U>(u)));
       }
   };
 
@@ -372,7 +418,44 @@ namespace Octahedron
 
       LogLevel _collectiveLogLevel{LogLevel::NONE};
       LoggerList _loggers;
-  };
+	};
 }  // namespace Octahedron
+
+//template <typename T>
+//struct ::fmt::formatter<Octahedron::Formatter<T>>
+//{
+//		template <typename ParseContext>
+//		constexpr auto parse(ParseContext &ctx)
+//		{
+//			return (_formatter.parse(ctx));
+//		}
+//
+//		template <typename FormatContext>
+//		auto format(const Octahedron::Formatter<T> &me, FormatContext &ctx)
+//		{
+//			return (_formatter.format(me, ctx));
+//		}
+//
+//		Octahedron::Formatter<T> _formatter{};
+//};
+
+template <typename T>
+requires(std::is_enum_v<T>)
+struct ::fmt::formatter<Octahedron::BitSet<T>>
+{
+	template <typename ParseContext>
+	constexpr auto parse(ParseContext &ctx)
+	{
+		return (_formatter.parse(ctx));
+	}
+
+	template <typename FormatContext>
+	auto format(const Octahedron::BitSet<T> &me, FormatContext &ctx)
+	{
+		return (_formatter.format(me.value, ctx));
+	}
+
+	::fmt::formatter<std::underlying_type_t<T>> _formatter{};
+};
 
 #endif

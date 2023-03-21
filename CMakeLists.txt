@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.21)
 
 project(Octahedron)
 
-add_compile_options("/fsanitize=address")
-
 set(SDL2IMAGE_INSTALL OFF)
 set(BUILD_SHARED_LIBS FALSE)
 

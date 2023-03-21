@@ -3380,9 +3380,9 @@ struct Octahedron::Serializer<DDPIXELFORMAT>
 {
     template <typename T>
     requires(readable<T>)
-    bool get(IOInterface<T> *self, DDPIXELFORMAT &obj) const
+		auto get(IOReadable<T> *self, DDPIXELFORMAT &obj) const
     {
-            return (self->get<Endianness::LITTLE>(
+            return (self->template get<Endianness::LITTLE>(
               obj.dwSize,
               obj.dwFlags,
               obj.dwFourCC,
@@ -3396,9 +3396,9 @@ struct Octahedron::Serializer<DDPIXELFORMAT>
 
     template <typename T>
     requires(writeable<T>)
-    bool put(IOInterface<T> *self, const DDPIXELFORMAT &obj) const
+    auto put(IOWriteable<T> *self, const DDPIXELFORMAT &obj) const
     {
-            return (self->put<Endianness::LITTLE>(
+            return (self->template put<Endianness::LITTLE>(
               obj.dwSize,
               obj.dwFlags,
               obj.dwFourCC,
@@ -3416,9 +3416,9 @@ struct Octahedron::Serializer<DDSURFACEDESC2>
 {
     template <typename T>
     requires(readable<T>)
-    auto get(IOInterface<T> *self, DDSURFACEDESC2 &obj) const
+		auto get(IOReadable<T> *self, DDSURFACEDESC2 &obj) const
     {
-        return (self->get<Endianness::LITTLE>(
+        return (self->template get<Endianness::LITTLE>(
           obj.dwSize,
           obj.dwFlags,
           obj.dwHeight,
@@ -3437,9 +3437,9 @@ struct Octahedron::Serializer<DDSURFACEDESC2>
 
     template <typename T>
     requires(writeable<T>)
-    auto put(IOInterface<T> *self, const DDSURFACEDESC2 &obj) const
+		io_result put(IOWriteable<T> *self, const DDSURFACEDESC2 &obj) const
     {
-        return (self->put<Endianness::LITTLE>(
+        return (self->template put<Endianness::LITTLE>(
           obj.dwSize,
           obj.dwFlags,
           obj.dwHeight,
@@ -3835,7 +3835,7 @@ void savepng(const char *filename, ImageData &image, bool flip)
     writepngchunk(f.get(), "IHDR", (uchar *)&ihdr, 13);
 
     stream::offset idat = f->tell();
-    uint len = 0;
+    uint           len  = 0;
     f->write("\0\0\0\0IDAT", 8);
     uint crc = crc32(0, Z_NULL, 0);
     crc = crc32(crc, (const Bytef *)"IDAT", 4);

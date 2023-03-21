@@ -2,6 +2,13 @@
 
 #include "engine.h"
 
+#include "Tools/Math.h"
+#include "IO/FileStream.h"
+#include "IO/GZFileStream.h"
+
+using Octahedron::FileStream;
+using Octahedron::LogLevel;
+
 void validmapname(char *dst, const char *src, const char *prefix = NULL, const char *alt = "untitled", size_t maxlen = 100)
 {
     if(prefix) while(*prefix) *dst++ = *prefix++;
@@ -29,67 +36,106 @@ static void fixent(entity &e, int version)
     }
 }
 
-static bool loadmapheader(stream *f, const char *ogzname, mapheader &hdr, octaheader &ohdr)
+static bool loadmapheader(FileStream *f, const char *ogzname, mapheader &hdr, octaheader &ohdr)
 {
-    if(f->read(&hdr, 3*sizeof(int)) != 3*sizeof(int)) { conoutf(CON_ERROR, "map %s has malformatted header", ogzname); return false; }
-    lilswap(&hdr.version, 2);
-
+    if(auto ret = f->get(hdr.magic, hdr.version, hdr.headersize); !ret)
+    {
+	    Octahedron::log(LogLevel::ERROR, "map {} has malformatted header", ogzname);
+			Octahedron::log(LogLevel::ERROR | LogLevel::DEBUG, "(expected to read {} bytes, got {})", ret.expected_size, ret.value);
+    	return false;
+    }
     if(!memcmp(hdr.magic, "TMAP", 4))
     {
-        if(hdr.version>MAPVERSION) { conoutf(CON_ERROR, "map %s requires a newer version of Tesseract", ogzname); return false; }
-        if(f->read(&hdr.worldsize, 6*sizeof(int)) != 6*sizeof(int)) { conoutf(CON_ERROR, "map %s has malformatted header", ogzname); return false; }
-        lilswap(&hdr.worldsize, 6);
-        if(hdr.worldsize <= 0|| hdr.numents < 0) { conoutf(CON_ERROR, "map %s has malformatted header", ogzname); return false; }
+        if(hdr.version>MAPVERSION)
+        {
+	        Octahedron::log(LogLevel::ERROR, "map {} requires a newer version of Tesseract", ogzname);
+        	return false;
+        }
+        if(auto ret = f->get(hdr.worldsize, hdr.numents, hdr.numpvs, hdr.blendmap, hdr.numvars, hdr.numvslots); !ret)
+        {
+	        Octahedron::log(LogLevel::ERROR, "map {} has malformatted header", ogzname);
+					Octahedron::log(LogLevel::ERROR | LogLevel::DEBUG, "(expected to read {} bytes, got {})", ret.expected_size, ret.value);
+        	return false;
+				}
+				if (hdr.worldsize <= 0 || hdr.numents < 0)
+				{
+					Octahedron::log(LogLevel::ERROR, "map {} has malformatted header", ogzname);
+					return false;
+				}
     }
     else if(!memcmp(hdr.magic, "OCTA", 4))
-    {
-        if(hdr.version!=OCTAVERSION) { conoutf(CON_ERROR, "map %s uses an unsupported map format version", ogzname); return false; }
-        if(f->read(&ohdr.worldsize, 7*sizeof(int)) != 7*sizeof(int)) { conoutf(CON_ERROR, "map %s has malformatted header", ogzname); return false; }
-        lilswap(&ohdr.worldsize, 7);
-        if(ohdr.worldsize <= 0|| ohdr.numents < 0) { conoutf(CON_ERROR, "map %s has malformatted header", ogzname); return false; }
-        memcpy(hdr.magic, "TMAP", 4);
-        hdr.version = 0;
-        hdr.headersize = sizeof(hdr);
-        hdr.worldsize = ohdr.worldsize;
-        hdr.numents = ohdr.numents;
-        hdr.numpvs = ohdr.numpvs;
-        hdr.blendmap = ohdr.blendmap;
-        hdr.numvars = ohdr.numvars;
-        hdr.numvslots = ohdr.numvslots;
-    }
-    else { conoutf(CON_ERROR, "map %s uses an unsupported map type", ogzname); return false; }
+		{
+				if (hdr.version != OCTAVERSION)
+				{
+					Octahedron::log(
+						LogLevel::ERROR,
+						"map {} uses an unsupported map format version",
+						ogzname);
+					return false;
+				}
+				if (auto ret = f->get(ohdr.worldsize, ohdr.numents, ohdr.numpvs, ohdr.lightmaps, ohdr.blendmap, ohdr.numvars, ohdr.numvslots); !ret)
+				{
+					Octahedron::log(LogLevel::ERROR, "map {} has malformatted header", ogzname);
+					Octahedron::log(LogLevel::ERROR | LogLevel::DEBUG, "(expected to read {} bytes, got {})", ret.expected_size, ret.value);
+					return false;
+				}
+				if (ohdr.worldsize <= 0 || ohdr.numents < 0)
+				{
+					Octahedron::log(LogLevel::ERROR, "map {} has malformatted header", ogzname);
+					return false;
+				}
+				memcpy(hdr.magic, "TMAP", 4);
+				hdr.version		 = 0;
+				hdr.headersize = sizeof(hdr);
+				hdr.worldsize	 = ohdr.worldsize;
+				hdr.numents		 = ohdr.numents;
+				hdr.numpvs		 = ohdr.numpvs;
+				hdr.blendmap	 = ohdr.blendmap;
+				hdr.numvars		 = ohdr.numvars;
+				hdr.numvslots	 = ohdr.numvslots;
+		}
+		else
+		{
+				Octahedron::log(LogLevel::ERROR, "map {} uses an unsupported map type", ogzname);
+				return false;
+		}
 
     return true;
 }
 
 bool loadents(const char *fname, vector<entity> &ents, uint *crc)
 {
+	  using OpenFlags = Octahedron::OpenFlags;
+
     string name;
     validmapname(name, fname);
     defformatstring(ogzname, "media/map/%s.ogz", name);
-    path(ogzname);
-    stream *f = opengzfile(ogzname, "rb");
+		path(ogzname);
+		auto f = g_engine->fileSystem().openGZ(ogzname, OpenFlags::INPUT | OpenFlags::BINARY);
     if(!f) return false;
 
     mapheader hdr;
     octaheader ohdr;
-    if(!loadmapheader(f, ogzname, hdr, ohdr)) { delete f; return false; }
+		if (!loadmapheader(f.get(), ogzname, hdr, ohdr))
+		{
+				return false;
+		}
 
     loopi(hdr.numvars)
     {
-        int type = f->getchar(), ilen = f->getlil<ushort>();
+        int type = f->get<char>(), ilen = f->get<ushort>();
         f->seek(ilen, SEEK_CUR);
         switch(type)
         {
-            case ID_VAR: f->getlil<int>(); break;
-            case ID_FVAR: f->getlil<float>(); break;
-            case ID_SVAR: { int slen = f->getlil<ushort>(); f->seek(slen, SEEK_CUR); break; }
+            case ID_VAR: f->get<int>(); break;
+            case ID_FVAR: f->get<float>(); break;
+            case ID_SVAR: { int slen = f->get<ushort>(); f->seek(slen, SEEK_CUR); break; }
         }
     }
 
     string gametype;
     bool samegame = true;
-    int len = f->getchar();
+    int len = f->get<char>();
     if(len >= 0) f->read(gametype, len+1);
     gametype[max(len, 0)] = '\0';
     if(strcmp(gametype, game::gameident()))
@@ -97,19 +143,17 @@ bool loadents(const char *fname, vector<entity> &ents, uint *crc)
         samegame = false;
         conoutf(CON_WARN, "WARNING: loading map from %s game, ignoring entities except for lights/mapmodels", gametype);
     }
-    int eif = f->getlil<ushort>();
-    int extrasize = f->getlil<ushort>();
+    int eif = f->get<ushort>();
+    int extrasize = f->get<ushort>();
     f->seek(extrasize, SEEK_CUR);
 
-    ushort nummru = f->getlil<ushort>();
+    ushort nummru = f->get<ushort>();
     f->seek(nummru*sizeof(ushort), SEEK_CUR);
 
     loopi(min(hdr.numents, MAXENTS))
     {
         entity &e = ents.add();
-        f->read(&e, sizeof(entity));
-        lilswap(&e.o.x, 3);
-        lilswap(&e.attr1, 5);
+				f->get(e);
         fixent(e, hdr.version);
         if(eif > 0) f->seek(eif, SEEK_CUR);
         if(samegame)
@@ -126,10 +170,8 @@ bool loadents(const char *fname, vector<entity> &ents, uint *crc)
     if(crc)
     {
         f->seek(0, SEEK_END);
-        *crc = f->getcrc();
+        *crc = f->crc32();
     }
-
-    delete f;
 
     return true;
 }
@@ -195,7 +237,7 @@ struct polysurfacecompat
 
 static int savemapprogress = 0;
 
-void savec(cube *c, const ivec &o, int size, stream *f, bool nolms)
+void savec(cube *c, const ivec &o, int size, FileStream *f, bool nolms)
 {
     if((savemapprogress++&0xFFF)==0) renderprogress(float(savemapprogress)/allocnodes, "saving octree...");
 
@@ -204,14 +246,14 @@ void savec(cube *c, const ivec &o, int size, stream *f, bool nolms)
         ivec co(i, o, size);
         if(c[i].children)
         {
-            f->putchar(OCTSAV_CHILDREN);
+            f->put<char>(OCTSAV_CHILDREN);
             savec(c[i].children, co, size>>1, f, nolms);
         }
         else
         {
             int oflags = 0, surfmask = 0, totalverts = 0;
             if(c[i].material!=MAT_AIR) oflags |= 0x40;
-            if(isempty(c[i])) f->putchar(oflags | OCTSAV_EMPTY);
+            if(isempty(c[i])) f->put<char>(oflags | OCTSAV_EMPTY);
             else
             {
                 if(!nolms)
@@ -227,22 +269,22 @@ void savec(cube *c, const ivec &o, int size, stream *f, bool nolms)
                     }
                 }
 
-                if(isentirelysolid(c[i])) f->putchar(oflags | OCTSAV_SOLID);
+                if(isentirelysolid(c[i])) f->put<char>(oflags | OCTSAV_SOLID);
                 else
                 {
-                    f->putchar(oflags | OCTSAV_NORMAL);
+                    f->put<char>(oflags | OCTSAV_NORMAL);
                     f->write(c[i].edges, 12);
                 }
             }
 
-            loopj(6) f->putlil<ushort>(c[i].texture[j]);
+            loopj(6) f->put<ushort>(c[i].texture[j]);
 
-            if(oflags&0x40) f->putlil<ushort>(c[i].material);
-            if(oflags&0x80) f->putchar(c[i].merged);
+            if(oflags&0x40) f->put<ushort>(c[i].material);
+            if(oflags&0x80) f->put<char>(c[i].merged);
             if(oflags&0x20)
             {
-                f->putchar(surfmask);
-                f->putchar(totalverts);
+                f->put<char>(surfmask);
+                f->put<char>(totalverts);
                 loopj(6) if(surfmask&(1<<j))
                 {
                     surfaceinfo surf = c[i].ext->surfaces[j];
@@ -285,28 +327,28 @@ void savec(cube *c, const ivec &o, int size, stream *f, bool nolms)
                         if(matchnorm) vertmask |= 0x08;
                     }
                     surf.verts = vertmask;
-                    f->write(&surf, sizeof(surf));
+										f->write(reinterpret_cast<std::byte *>(&surf), sizeof(surf));
                     bool hasxyz = (vertmask&0x04)!=0, hasnorm = (vertmask&0x80)!=0;
                     if(layerverts == 4)
                     {
                         if(hasxyz && vertmask&0x01)
                         {
                             ivec v0 = verts[vertorder].getxyz(), v2 = verts[(vertorder+2)&3].getxyz();
-                            f->putlil<ushort>(v0[vc]); f->putlil<ushort>(v0[vr]);
-                            f->putlil<ushort>(v2[vc]); f->putlil<ushort>(v2[vr]);
+                            f->put<ushort>(v0[vc]); f->put<ushort>(v0[vr]);
+                            f->put<ushort>(v2[vc]); f->put<ushort>(v2[vr]);
                             hasxyz = false;
                         }
                     }
-                    if(hasnorm && vertmask&0x08) { f->putlil<ushort>(verts[0].norm); hasnorm = false; }
+                    if(hasnorm && vertmask&0x08) { f->put<ushort>(verts[0].norm); hasnorm = false; }
                     if(hasxyz || hasnorm) loopk(layerverts)
                     {
                         const vertinfo &v = verts[(k+vertorder)%layerverts];
                         if(hasxyz)
                         {
                             ivec xyz = v.getxyz();
-                            f->putlil<ushort>(xyz[vc]); f->putlil<ushort>(xyz[vr]);
+                            f->put<ushort>(xyz[vc]); f->put<ushort>(xyz[vr]);
                         }
-                        if(hasnorm) f->putlil<ushort>(v.norm);
+                        if(hasnorm) f->put<ushort>(v.norm);
                     }
                 }
             }
@@ -314,11 +356,11 @@ void savec(cube *c, const ivec &o, int size, stream *f, bool nolms)
     }
 }
 
-cube *loadchildren(stream *f, const ivec &co, int size, bool &failed);
+cube *loadchildren(FileStream *f, const ivec &co, int size, bool &failed);
 
-void loadc(stream *f, cube &c, const ivec &co, int size, bool &failed)
+void loadc(FileStream *f, cube &c, const ivec &co, int size, bool &failed)
 {
-    int octsav = f->getchar();
+    int octsav = f->get<char>();
     switch(octsav&0x7)
     {
         case OCTSAV_CHILDREN:
@@ -330,14 +372,14 @@ void loadc(stream *f, cube &c, const ivec &co, int size, bool &failed)
         case OCTSAV_NORMAL: f->read(c.edges, 12); break;
         default: failed = true; return;
     }
-    loopi(6) c.texture[i] = f->getlil<ushort>();
-    if(octsav&0x40) c.material = f->getlil<ushort>();
-    if(octsav&0x80) c.merged = f->getchar();
+    loopi(6) c.texture[i] = f->get<ushort>();
+    if(octsav&0x40) c.material = f->get<ushort>();
+    if(octsav&0x80) c.merged = f->get<char>();
     if(octsav&0x20)
     {
         int surfmask, totalverts;
-        surfmask = f->getchar();
-        totalverts = max(f->getchar(), 0);
+        surfmask = f->get<char>();
+        totalverts = Octahedron::max(f->get<char>(), 0);
         newcubeext(c, totalverts, false);
         memset(c.ext->surfaces, 0, sizeof(c.ext->surfaces));
         memset(c.ext->verts(), 0, totalverts*sizeof(vertinfo));
@@ -348,11 +390,11 @@ void loadc(stream *f, cube &c, const ivec &co, int size, bool &failed)
             if(mapversion <= 0)
             {
                 polysurfacecompat psurf;
-                f->read(&psurf, sizeof(polysurfacecompat));
+								f->read(reinterpret_cast<std::byte *>(&psurf), sizeof(polysurfacecompat));
                 surf.verts = psurf.verts;
                 surf.numverts = psurf.numverts;
             }
-            else f->read(&surf, sizeof(surf));
+						else f->read(reinterpret_cast<std::byte *>(&surf), sizeof(surf));
             int vertmask = surf.verts, numverts = surf.totalverts();
             if(!numverts) { surf.verts = 0; continue; }
             surf.verts = offset;
@@ -381,7 +423,7 @@ void loadc(stream *f, cube &c, const ivec &co, int size, bool &failed)
             {
                 if(hasxyz && vertmask&0x01)
                 {
-                    ushort c1 = f->getlil<ushort>(), r1 = f->getlil<ushort>(), c2 = f->getlil<ushort>(), r2 = f->getlil<ushort>();
+                    ushort c1 = f->get<ushort>(), r1 = f->get<ushort>(), c2 = f->get<ushort>(), r2 = f->get<ushort>();
                     ivec xyz;
                     xyz[vc] = c1; xyz[vr] = r1; xyz[dim] = n[dim] ? -(bias + n[vc]*xyz[vc] + n[vr]*xyz[vr])/n[dim] : vo[dim];
                     verts[0].setxyz(xyz);
@@ -395,14 +437,14 @@ void loadc(stream *f, cube &c, const ivec &co, int size, bool &failed)
                 }
                 if(hasuv && vertmask&0x02)
                 {
-                    loopk(4) f->getlil<ushort>();
-                    if(surf.numverts&LAYER_DUP) loopk(4) f->getlil<ushort>();
+                    loopk(4) f->get<ushort>();
+                    if(surf.numverts&LAYER_DUP) loopk(4) f->get<ushort>();
                     hasuv = false;
                 }
             }
             if(hasnorm && vertmask&0x08)
             {
-                ushort norm = f->getlil<ushort>();
+                ushort norm = f->get<ushort>();
                 loopk(layerverts) verts[k].norm = norm;
                 hasnorm = false;
             }
@@ -412,19 +454,19 @@ void loadc(stream *f, cube &c, const ivec &co, int size, bool &failed)
                 if(hasxyz)
                 {
                     ivec xyz;
-                    xyz[vc] = f->getlil<ushort>(); xyz[vr] = f->getlil<ushort>();
+                    xyz[vc] = f->get<ushort>(); xyz[vr] = f->get<ushort>();
                     xyz[dim] = n[dim] ? -(bias + n[vc]*xyz[vc] + n[vr]*xyz[vr])/n[dim] : vo[dim];
                     v.setxyz(xyz);
                 }
-                if(hasuv) { f->getlil<ushort>(); f->getlil<ushort>(); }
-                if(hasnorm) v.norm = f->getlil<ushort>();
+                if(hasuv) { f->get<ushort>(); f->get<ushort>(); }
+                if(hasnorm) v.norm = f->get<ushort>();
             }
-            if(hasuv && surf.numverts&LAYER_DUP) loopk(layerverts) { f->getlil<ushort>(); f->getlil<ushort>(); }
+            if(hasuv && surf.numverts&LAYER_DUP) loopk(layerverts) { f->get<ushort>(); f->get<ushort>(); }
         }
     }
 }
 
-cube *loadchildren(stream *f, const ivec &co, int size, bool &failed)
+cube *loadchildren(FileStream *f, const ivec &co, int size, bool &failed)
 {
     cube *c = newcubes();
     loopi(8)
@@ -437,50 +479,50 @@ cube *loadchildren(stream *f, const ivec &co, int size, bool &failed)
 
 VAR(dbgvars, 0, 0, 1);
 
-void savevslot(stream *f, VSlot &vs, int prev)
+void savevslot(FileStream *f, VSlot &vs, int prev)
 {
-    f->putlil<int>(vs.changed);
-    f->putlil<int>(prev);
+    f->put(vs.changed);
+    f->put(prev);
     if(vs.changed & (1<<VSLOT_SHPARAM))
     {
-        f->putlil<ushort>(vs.params.length());
+				f->put(ushort(vs.params.length()));
         loopv(vs.params)
         {
             SlotShaderParam &p = vs.params[i];
-            f->putlil<ushort>(strlen(p.name));
+            f->put(ushort(strlen(p.name)));
             f->write(p.name, strlen(p.name));
-            loopk(4) f->putlil<float>(p.val[k]);
+            loopk(4) f->put(float(p.val[k]));
         }
     }
-    if(vs.changed & (1<<VSLOT_SCALE)) f->putlil<float>(vs.scale);
-    if(vs.changed & (1<<VSLOT_ROTATION)) f->putlil<int>(vs.rotation);
+    if(vs.changed & (1<<VSLOT_SCALE)) f->put(float(vs.scale));
+    if(vs.changed & (1<<VSLOT_ROTATION)) f->put(int(vs.rotation));
     if(vs.changed & (1<<VSLOT_OFFSET))
     {
-        loopk(2) f->putlil<int>(vs.offset[k]);
+        loopk(2) f->put(int(vs.offset[k]));
     }
     if(vs.changed & (1<<VSLOT_SCROLL))
     {
-        loopk(2) f->putlil<float>(vs.scroll[k]);
+        loopk(2) f->put(float(vs.scroll[k]));
     }
-    if(vs.changed & (1<<VSLOT_LAYER)) f->putlil<int>(vs.layer);
+    if(vs.changed & (1<<VSLOT_LAYER)) f->put(int(vs.layer));
     if(vs.changed & (1<<VSLOT_ALPHA))
     {
-        f->putlil<float>(vs.alphafront);
-        f->putlil<float>(vs.alphaback);
+        f->put(float(vs.alphafront));
+        f->put(float(vs.alphaback));
     }
     if(vs.changed & (1<<VSLOT_COLOR))
     {
-        loopk(3) f->putlil<float>(vs.colorscale[k]);
+        loopk(3) f->put(float(vs.colorscale[k]));
     }
     if(vs.changed & (1<<VSLOT_REFRACT))
     {
-        f->putlil<float>(vs.refractscale);
-        loopk(3) f->putlil<float>(vs.refractcolor[k]);
+        f->put(float(vs.refractscale));
+        loopk(3) f->put(float(vs.refractcolor[k]));
     }
-    if(vs.changed & (1<<VSLOT_DETAIL)) f->putlil<int>(vs.detail);
+    if(vs.changed & (1<<VSLOT_DETAIL)) f->put(int(vs.detail));
 }
 
-void savevslots(stream *f, int numvslots)
+void savevslots(FileStream *f, int numvslots)
 {
     if(vslots.empty()) return;
     int *prev = new int[numvslots];
@@ -502,69 +544,71 @@ void savevslots(stream *f, int numvslots)
     {
         VSlot &vs = *vslots[i];
         if(!vs.changed) continue;
-        if(lastroot < i) f->putlil<int>(-(i - lastroot));
+				if (lastroot < i)
+						f->put(int(-(i - lastroot)));
         savevslot(f, vs, prev[i]);
         lastroot = i+1;
     }
-    if(lastroot < numvslots) f->putlil<int>(-(numvslots - lastroot));
+		if (lastroot < numvslots)
+				f->put(int(-(numvslots - lastroot)));
     delete[] prev;
 }
 
-void loadvslot(stream *f, VSlot &vs, int changed)
+void loadvslot(FileStream *f, VSlot &vs, int changed)
 {
     vs.changed = changed;
     if(vs.changed & (1<<VSLOT_SHPARAM))
     {
-        int numparams = f->getlil<ushort>();
+        int numparams = f->get<ushort>();
         string name;
         loopi(numparams)
         {
             SlotShaderParam &p = vs.params.add();
-            int nlen = f->getlil<ushort>();
+            int nlen = f->get<ushort>();
             f->read(name, min(nlen, MAXSTRLEN-1));
             name[min(nlen, MAXSTRLEN-1)] = '\0';
             if(nlen >= MAXSTRLEN) f->seek(nlen - (MAXSTRLEN-1), SEEK_CUR);
             p.name = getshaderparamname(name);
             p.loc = -1;
-            loopk(4) p.val[k] = f->getlil<float>();
+            loopk(4) p.val[k] = f->get<float>();
         }
     }
-    if(vs.changed & (1<<VSLOT_SCALE)) vs.scale = f->getlil<float>();
-    if(vs.changed & (1<<VSLOT_ROTATION)) vs.rotation = clamp(f->getlil<int>(), 0, 7);
+    if(vs.changed & (1<<VSLOT_SCALE)) vs.scale = f->get<float>();
+    if(vs.changed & (1<<VSLOT_ROTATION)) vs.rotation = clamp(f->get<int>(), 0, 7);
     if(vs.changed & (1<<VSLOT_OFFSET))
     {
-        loopk(2) vs.offset[k] = f->getlil<int>();
+        loopk(2) vs.offset[k] = f->get<int>();
     }
     if(vs.changed & (1<<VSLOT_SCROLL))
     {
-        loopk(2) vs.scroll[k] = f->getlil<float>();
+        loopk(2) vs.scroll[k] = f->get<float>();
     }
-    if(vs.changed & (1<<VSLOT_LAYER)) vs.layer = f->getlil<int>();
+    if(vs.changed & (1<<VSLOT_LAYER)) vs.layer = f->get<int>();
     if(vs.changed & (1<<VSLOT_ALPHA))
     {
-        vs.alphafront = f->getlil<float>();
-        vs.alphaback = f->getlil<float>();
+        vs.alphafront = f->get<float>();
+        vs.alphaback = f->get<float>();
     }
     if(vs.changed & (1<<VSLOT_COLOR))
     {
-        loopk(3) vs.colorscale[k] = f->getlil<float>();
+        loopk(3) vs.colorscale[k] = f->get<float>();
     }
     if(vs.changed & (1<<VSLOT_REFRACT))
     {
-        vs.refractscale = f->getlil<float>();
-        loopk(3) vs.refractcolor[k] = f->getlil<float>();
+        vs.refractscale = f->get<float>();
+        loopk(3) vs.refractcolor[k] = f->get<float>();
     }
-    if(vs.changed & (1<<VSLOT_DETAIL)) vs.detail = f->getlil<int>();
+    if(vs.changed & (1<<VSLOT_DETAIL)) vs.detail = f->get<int>();
 }
 
-void loadvslots(stream *f, int numvslots)
+void loadvslots(FileStream *f, int numvslots)
 {
     int *prev = new (false) int[numvslots];
     if(!prev) return;
     memset(prev, -1, numvslots*sizeof(int));
     while(numvslots > 0)
     {
-        int changed = f->getlil<int>();
+        int changed = f->get<int>();
         if(changed < 0)
         {
             loopi(-changed) vslots.add(new VSlot(NULL, vslots.length()));
@@ -572,7 +616,7 @@ void loadvslots(stream *f, int numvslots)
         }
         else
         {
-            prev[vslots.length()] = f->getlil<int>();
+            prev[vslots.length()] = f->get<int>();
             loadvslot(f, *vslots.add(new VSlot(NULL, vslots.length())), changed);
             numvslots--;
         }
@@ -585,8 +629,9 @@ bool save_world(const char *mname, bool nolms)
 {
     if(!*mname) mname = game::getclientmap();
     setmapfilenames(*mname ? mname : "untitled");
-    if(savebak) backup(ogzname, bakname);
-    stream *f = opengzfile(ogzname, "wb");
+		if (savebak)
+				backup(ogzname, bakname);
+		auto f = g_engine->fileSystem().openGZ(ogzname, Octahedron::OpenFlags::INPUT | Octahedron::OpenFlags::BINARY);
     if(!f) { conoutf(CON_WARN, "could not write map to %s", ogzname); return false; }
 
     int numvslots = vslots.length();
@@ -615,30 +660,29 @@ bool save_world(const char *mname, bool nolms)
     {
         if((id.type == ID_VAR || id.type == ID_FVAR || id.type == ID_SVAR) && id.flags&IDF_OVERRIDE && !(id.flags&IDF_READONLY) && id.flags&IDF_OVERRIDDEN) hdr.numvars++;
     });
-    lilswap(&hdr.version, 8);
-    f->write(&hdr, sizeof(hdr));
+    f->put(hdr);
 
     enumerate(idents, ident, id,
     {
         if((id.type!=ID_VAR && id.type!=ID_FVAR && id.type!=ID_SVAR) || !(id.flags&IDF_OVERRIDE) || id.flags&IDF_READONLY || !(id.flags&IDF_OVERRIDDEN)) continue;
-        f->putchar(id.type);
-        f->putlil<ushort>(strlen(id.name));
+        f->put(id.type);
+        f->put(uint16_t(strlen(id.name)));
         f->write(id.name, strlen(id.name));
         switch(id.type)
         {
             case ID_VAR:
                 if(dbgvars) conoutf(CON_DEBUG, "wrote var %s: %d", id.name, *id.storage.i);
-                f->putlil<int>(*id.storage.i);
+                f->put(*id.storage.i);
                 break;
 
             case ID_FVAR:
                 if(dbgvars) conoutf(CON_DEBUG, "wrote fvar %s: %f", id.name, *id.storage.f);
-                f->putlil<float>(*id.storage.f);
+                f->put(*id.storage.f);
                 break;
 
             case ID_SVAR:
                 if(dbgvars) conoutf(CON_DEBUG, "wrote svar %s: %s", id.name, *id.storage.s);
-                f->putlil<ushort>(strlen(*id.storage.s));
+                f->put<ushort>(strlen(*id.storage.s));
                 f->write(*id.storage.s, strlen(*id.storage.s));
                 break;
         }
@@ -646,43 +690,41 @@ bool save_world(const char *mname, bool nolms)
 
     if(dbgvars) conoutf(CON_DEBUG, "wrote %d vars", hdr.numvars);
 
-    f->putchar((int)strlen(game::gameident()));
+    f->put((char)strlen(game::gameident()));
     f->write(game::gameident(), (int)strlen(game::gameident())+1);
-    f->putlil<ushort>(entities::extraentinfosize());
+    f->put(ushort(entities::extraentinfosize()));
     vector<char> extras;
     game::writegamedata(extras);
-    f->putlil<ushort>(extras.length());
+    f->put(ushort(extras.length()));
     f->write(extras.getbuf(), extras.length());
 
-    f->putlil<ushort>(texmru.length());
-    loopv(texmru) f->putlil<ushort>(texmru[i]);
+    f->put(ushort(texmru.length()));
+		loopv(texmru) f->put(ushort(texmru[i]));
     char *ebuf = new char[entities::extraentinfosize()];
     loopv(ents)
     {
         if(ents[i]->type!=ET_EMPTY || nolms)
         {
             entity tmp = *ents[i];
-            lilswap(&tmp.o.x, 3);
-            lilswap(&tmp.attr1, 5);
-            f->write(&tmp, sizeof(entity));
+        	  f->get(tmp);
+						f->write(reinterpret_cast<std::byte *>(&tmp), sizeof(entity));
             entities::writeent(*ents[i], ebuf);
             if(entities::extraentinfosize()) f->write(ebuf, entities::extraentinfosize());
         }
     }
     delete[] ebuf;
 
-    savevslots(f, numvslots);
+    savevslots(f.get(), numvslots);
 
     renderprogress(0, "saving octree...");
-    savec(worldroot, ivec(0, 0, 0), worldsize>>1, f, nolms);
+		savec(worldroot, ivec(0, 0, 0), worldsize >> 1, f.get(), nolms);
 
     if(!nolms)
     {
-        if(getnumviewcells()>0) { renderprogress(0, "saving pvs..."); savepvs(f); }
+        if(getnumviewcells()>0) { renderprogress(0, "saving pvs..."); savepvs(f.get()); }
     }
-    if(shouldsaveblendmap()) { renderprogress(0, "saving blendmap..."); saveblendmap(f); }
+    if(shouldsaveblendmap()) { renderprogress(0, "saving blendmap..."); saveblendmap(f.get()); }
 
-    delete f;
     conoutf("wrote map file %s", ogzname);
     return true;
 }
@@ -694,15 +736,18 @@ void clearmapcrc() { mapcrc = 0; }
 
 bool load_world(const char *mname, const char *cname)        // still supports all map formats that have existed since the earliest cube betas!
 {
+	  using OpenFlags = Octahedron::OpenFlags;
+
     int loadingstart = SDL_GetTicks();
     setmapfilenames(mname, cname);
-    stream *f = opengzfile(ogzname, "rb");
+    auto f = g_engine->fileSystem().openGZ(ogzname, OpenFlags::INPUT | OpenFlags::BINARY);
     if(!f) { conoutf(CON_ERROR, "could not read map %s", ogzname); return false; }
 
     mapheader hdr;
     octaheader ohdr;
     memset(&ohdr, 0, sizeof(ohdr));
-    if(!loadmapheader(f, ogzname, hdr, ohdr)) { delete f; return false; }
+		if (!loadmapheader(f.get(), ogzname, hdr, ohdr))
+				return false;
 
     resetmap();
 
@@ -725,21 +770,22 @@ bool load_world(const char *mname, const char *cname)        // still supports a
 
     loopi(hdr.numvars)
     {
-        int type = f->getchar(), ilen = f->getlil<ushort>();
+        char type = f->get<char>();
+				auto ilen = f->get<ushort>();
         string name;
-        f->read(name, min(ilen, MAXSTRLEN-1));
-        name[min(ilen, MAXSTRLEN-1)] = '\0';
+        f->read(name, Octahedron::min(ilen, MAXSTRLEN-1));
+				name[Octahedron::min(ilen, MAXSTRLEN - 1)] = '\0';
         if(ilen >= MAXSTRLEN) f->seek(ilen - (MAXSTRLEN-1), SEEK_CUR);
         ident *id = getident(name);
         tagval val;
         string str;
         switch(type)
         {
-            case ID_VAR: val.setint(f->getlil<int>()); break;
-            case ID_FVAR: val.setfloat(f->getlil<float>()); break;
+            case ID_VAR: val.setint(f->get<int>()); break;
+            case ID_FVAR: val.setfloat(f->get<float>()); break;
             case ID_SVAR:
             {
-                int slen = f->getlil<ushort>();
+                int slen = f->get<ushort>();
                 f->read(str, min(slen, MAXSTRLEN-1));
                 str[min(slen, MAXSTRLEN-1)] = '\0';
                 if(slen >= MAXSTRLEN) f->seek(slen - (MAXSTRLEN-1), SEEK_CUR);
@@ -780,7 +826,7 @@ bool load_world(const char *mname, const char *cname)        // still supports a
 
     string gametype;
     bool samegame = true;
-    int len = f->getchar();
+    int len = f->get<char>();
     if(len >= 0) f->read(gametype, len+1);
     gametype[max(len, 0)] = '\0';
     if(strcmp(gametype, game::gameident())!=0)
@@ -788,15 +834,15 @@ bool load_world(const char *mname, const char *cname)        // still supports a
         samegame = false;
         conoutf(CON_WARN, "WARNING: loading map from %s game, ignoring entities except for lights/mapmodels", gametype);
     }
-    int eif = f->getlil<ushort>();
-    int extrasize = f->getlil<ushort>();
+    int eif = f->get<ushort>();
+    int extrasize = f->get<ushort>();
     vector<char> extras;
     f->read(extras.pad(extrasize), extrasize);
     if(samegame) game::readgamedata(extras);
 
     texmru.shrink(0);
-    ushort nummru = f->getlil<ushort>();
-    loopi(nummru) texmru.add(f->getlil<ushort>());
+    ushort nummru = f->get<ushort>();
+    loopi(nummru) texmru.add(f->get<ushort>());
 
     renderprogress(0, "loading entities...");
 
@@ -807,9 +853,7 @@ bool load_world(const char *mname, const char *cname)        // still supports a
     {
         extentity &e = *entities::newentity();
         ents.add(&e);
-        f->read(&e, sizeof(entity));
-        lilswap(&e.o.x, 3);
-        lilswap(&e.attr1, 5);
+				f->get(static_cast<entity &>(e));
         fixent(e, hdr.version);
         if(samegame)
         {
@@ -842,11 +886,11 @@ bool load_world(const char *mname, const char *cname)        // still supports a
     }
 
     renderprogress(0, "loading slots...");
-    loadvslots(f, hdr.numvslots);
+		loadvslots(f.get(), hdr.numvslots);
 
     renderprogress(0, "loading octree...");
     bool failed = false;
-    worldroot = loadchildren(f, ivec(0, 0, 0), hdr.worldsize>>1, failed);
+		worldroot		= loadchildren(f.get(), ivec(0, 0, 0), hdr.worldsize >> 1, failed);
     if(failed) conoutf(CON_ERROR, "garbage in map");
 
     renderprogress(0, "validating...");
@@ -856,23 +900,24 @@ bool load_world(const char *mname, const char *cname)        // still supports a
     {
         if(mapversion <= 0) loopi(ohdr.lightmaps)
         {
-            int type = f->getchar();
+            int type = f->get<char>();
             if(type&0x80)
             {
-                f->getlil<ushort>();
-                f->getlil<ushort>();
+                f->get<ushort>();
+                f->get<ushort>();
             }
             int bpp = 3;
             if(type&(1<<4) && (type&0x0F)!=2) bpp = 4;
             f->seek(bpp*LM_PACKW*LM_PACKH, SEEK_CUR);
         }
 
-        if(hdr.numpvs > 0) loadpvs(f, hdr.numpvs);
-        if(hdr.blendmap) loadblendmap(f, hdr.blendmap);
+        if (hdr.numpvs > 0)
+					loadpvs(f.get(), hdr.numpvs);
+				if (hdr.blendmap)
+					loadblendmap(f.get(), hdr.blendmap);
     }
 
-    mapcrc = f->getcrc();
-    delete f;
+    mapcrc = f->crc32();
 
     conoutf("read map %s (%.1f seconds)", ogzname, (SDL_GetTicks()-loadingstart)/1000.0f);
 

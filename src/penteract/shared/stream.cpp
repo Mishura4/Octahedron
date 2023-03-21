@@ -718,7 +718,7 @@ struct gzstream : stream
         file->write(header, sizeof(header));
     }
 
-    void readbuf(size_t size = BUFSIZE)
+    void readbuf(size_t size = BUFSIZE) // octahedron done
     {
         if(!zfile.avail_in) zfile.next_in = (Bytef *)buf;
         size = min(size, size_t(&buf[BUFSIZE] - &zfile.next_in[zfile.avail_in]));
@@ -726,7 +726,7 @@ struct gzstream : stream
         if(n > 0) zfile.avail_in += n;
     }
 
-    uchar readbyte(size_t size = BUFSIZE)
+    uchar readbyte(size_t size = BUFSIZE) // octahedron done
     {
         if(!zfile.avail_in) readbuf(size);
         if(!zfile.avail_in) return 0;
@@ -734,7 +734,7 @@ struct gzstream : stream
         return *(uchar *)zfile.next_in++;
     }
 
-    void skipbytes(size_t n)
+    void skipbytes(size_t n) // octahedron done
     {
         while(n > 0 && zfile.avail_in > 0)
         {
@@ -747,7 +747,7 @@ struct gzstream : stream
         file->seek(n, SEEK_CUR);
     }
 
-    bool checkheader()
+    bool checkheader() // octahedron done
     {
         readbuf(10);
         if(readbyte() != MAGIC1 || readbyte() != MAGIC2 || readbyte() != Z_DEFLATED) return false;
@@ -767,7 +767,7 @@ struct gzstream : stream
         return zfile.avail_in > 0 || !file->end();
     }
 
-    bool open(stream *f, const char *mode, bool needclose, int level)
+    bool open(stream *f, const char *mode, bool needclose, int level) // done
     {
         if(file) return false;
         for(; *mode; mode++)
@@ -798,7 +798,7 @@ struct gzstream : stream
 
     uint getcrc() { return crc; }
 
-    void finishreading()
+    void finishreading() // done
     {
         if(!reading) return;
 #ifndef STANDALONE
@@ -815,14 +815,14 @@ struct gzstream : stream
 #endif
     }
 
-    void stopreading()
+    void stopreading() // done
     {
         if(!reading) return;
         inflateEnd(&zfile);
         reading = false;
     }
 
-    void finishwriting()
+    void finishwriting() // done (destructor)
     {
         if(!writing) return;
         for(;;)
@@ -840,14 +840,14 @@ struct gzstream : stream
         file->write(trailer, sizeof(trailer));
     }
 
-    void stopwriting()
+    void stopwriting() // done
     {
         if(!writing) return;
         deflateEnd(&zfile);
         writing = false;
     }
 
-    void close()
+    void close() // done (destructor)
     {
         if(reading) finishreading();
         stopreading();
@@ -933,7 +933,7 @@ struct gzstream : stream
         return len - zfile.avail_out;
     }
 
-    bool flushbuf(bool full = false)
+    bool flushbuf(bool full = false)  // octahedron done
     {
         if(full) deflate(&zfile, Z_SYNC_FLUSH);
         if(zfile.next_out && zfile.avail_out < BUFSIZE)
@@ -946,7 +946,8 @@ struct gzstream : stream
         return true;
     }
 
-    bool flush() { return flushbuf(true); }
+    bool flush() // octahedron done
+    { return flushbuf(true); }
 
     size_t write(const void *buf, size_t len)
     {

@@ -1090,14 +1090,14 @@ void renderblendbrush()
     renderblendbrush(brush->tex, x1, y1, x2 - x1, y2 - y1);
 }
 
-bool loadblendmap(stream *f, uchar &type, BlendMapNode &node)
+bool loadblendmap(Octahedron::FileStream *f, uchar &type, BlendMapNode &node)
 {
-    type = f->getchar();
+    type = f->get<char>();
     switch(type)
     {
         case BM_SOLID:
         {
-            int val = f->getchar();
+            int val = f->get<char>();
             if(val<0 || val>0xFF) return false;
             node.solid = &bmsolids[val];
             break;
@@ -1124,19 +1124,19 @@ bool loadblendmap(stream *f, uchar &type, BlendMapNode &node)
     return true;
 }
 
-bool loadblendmap(stream *f, int info)
+bool loadblendmap(Octahedron::FileStream *f, int info)
 {
     resetblendmap();
     return loadblendmap(f, blendmap.type, blendmap);
 }
 
-void saveblendmap(stream *f, uchar type, BlendMapNode &node)
+void saveblendmap(Octahedron::FileStream *f, uchar type, BlendMapNode &node)
 {
-    f->putchar(type);
+		f->put(type);
     switch(type)
     {
         case BM_SOLID:
-            f->putchar(node.solid->val);
+						f->put(node.solid->val);
             break;
 
         case BM_IMAGE:
@@ -1149,7 +1149,7 @@ void saveblendmap(stream *f, uchar type, BlendMapNode &node)
     }
 }
 
-void saveblendmap(stream *f)
+void saveblendmap(Octahedron::FileStream *f)
 {
     saveblendmap(f, blendmap.type, blendmap);
 }

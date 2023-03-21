@@ -1,13 +1,10 @@
 struct vec;
 struct vec4;
 
-struct vec2
+union vec2
 {
-    union
-    {
-        struct { float x, y; };
-        float v[2];
-    };
+	struct { float x, y; };
+	float          v[2];
 
     vec2() {}
     vec2(float x, float y) : x(x), y(y) {}
@@ -1953,16 +1950,35 @@ static inline float cotan360(int angle) { const vec2 &sc = sincos360[angle]; ret
 
 namespace Octahedron
 {
-    template <>
-    struct Serializer<vec2>
-    {
-        template<typename T>
-        requires (readable<T>)
-        bool get(IOInterface<T> *interface, vec2& vec) const
-        {
-            if (!interface->get(vec.x) || !interface->get(vec.y))
-              return (false);
-            return (true);
-        }
-    };
+		template <>
+		struct Serializer<vec2>
+		{
+				template <typename T>
+				auto get(IOReadable<T> *interface, vec2 &vec) const
+				{
+						return (interface->get(vec.v));
+				}
+
+				template <typename T>
+				auto put(IOReadable<T> *interface, const vec2 &vec) const
+				{
+						return (interface->put(vec.v));
+				}
+		};
+
+		template <>
+		struct Serializer<vec>
+		{
+				template <typename T>
+				auto get(IOReadable<T> *interface, vec &vec) const
+				{
+						return (interface->get(vec.v));
+				}
+
+				template <typename T>
+				auto put(IOReadable<T> *interface, const vec &vec) const
+				{
+						return (interface->put(vec.v));
+				}
+		};
 }

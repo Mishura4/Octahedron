@@ -1,93 +1,77 @@
-﻿---
+---
 Language: Cpp
-AlignConsecutiveMacros:
+AlignAfterOpenBracket: AlwaysBreak
+AlignArrayOfStructures: Left
+AlignConsecutiveAssignments: true
+AlignConsecutiveBitFields: 
   Enabled: true
   AcrossEmptyLines: true
   AcrossComments: false
-AlignConsecutiveAssignments:
+AlignConsecutiveDeclarations: true
+AlignConsecutiveMacros: 
   Enabled: true
-  AcrossEmptyLines: false
-  AcrossComments: true
-AlignConsecutiveDeclarations: 'false'
-AlignEscapedNewlines: Right
-AlignTrailingComments: 'true'
-AllowAllArgumentsOnNextLine: 'false'
-AllowAllConstructorInitializersOnNextLine: 'false'
-AllowAllParametersOfDeclarationOnNextLine: 'false'
-AllowShortBlocksOnASingleLine: 'false'
-AllowShortCaseLabelsOnASingleLine: 'false'
-AllowShortFunctionsOnASingleLine: Inline
-AllowShortIfStatementsOnASingleLine: Never
-AllowShortLambdasOnASingleLine: All
-AllowShortLoopsOnASingleLine: 'false'
-AlwaysBreakAfterReturnType: None
-AlwaysBreakBeforeMultilineStrings: 'false'
-AlwaysBreakTemplateDeclarations: 'Yes'
-BinPackArguments: 'false'
-BinPackParameters: 'false'
-BreakAfterJavaFieldAnnotations: 'true'
-# BreakBeforeBraces: Allman
-BreakBeforeTernaryOperators: 'false'
+  AcrossEmptyLines: true
+  AcrossComments: false
+AlignOperands: true
+AllowAllArgumentsOnNextLine: false
+AllowAllConstructorInitializersOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortBlocksOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: false
+AlwaysBreakAfterDefinitionReturnType: false
+AlwaysBreakTemplateDeclarations: Yes
+BinPackArguments: false
+BinPackParameters: false
+BraceWrapping: 
+  AfterCaseLabel: true
+  AfterClass: true
+  AfterControlStatement: true
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  AfterExternBlock: true
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeLambdaBody: true
+  BeforeWhile: true
+  IndentBraces: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+BreakAfterJavaFieldAnnotations: true
+BreakBeforeBraces: Custom
+BreakBeforeConceptDeclarations: Always
 BreakConstructorInitializers: AfterColon
 BreakInheritanceList: AfterColon
-BreakStringLiterals: 'true'
-ColumnLimit: '100'
-CompactNamespaces: 'false'
-Cpp11BracedListStyle: 'true'
-DerivePointerAlignment: 'false'
-FixNamespaceComments: 'true'
-# IncludeBlocks: Regroup
-IndentCaseLabels: 'true'
-IndentPPDirectives: AfterHash
-IndentWidth: '2'
-IndentWrappedFunctionNames: 'false'
-NamespaceIndentation: All
-PointerAlignment: Right
-ReflowComments: 'false'
-# SortIncludes: 'true'
-SortUsingDeclarations: 'true'
-SpaceAfterCStyleCast: 'true'
-SpaceAfterLogicalNot: 'false'
-SpaceAfterTemplateKeyword: 'true'
-SpaceBeforeAssignmentOperators: 'true'
-SpaceBeforeCpp11BracedList: 'false'
-SpaceBeforeCtorInitializerColon: 'true'
-SpaceBeforeInheritanceColon: 'true'
-SpaceBeforeParens: ControlStatements
-SpaceBeforeRangeBasedForLoopColon: 'true'
-SpaceInEmptyParentheses: 'false'
-SpacesBeforeTrailingComments: '2'
-SpacesInAngles: 'false'
-SpacesInCStyleCastParentheses: 'false'
-SpacesInContainerLiterals: 'false'
-SpacesInParentheses: 'false'
-SpacesInSquareBrackets: 'false'
-Standard: c++20
-TabWidth: '8'
-UseTab: Never
-AlignOperands: AlignAfterOperator
-AlignAfterOpenBracket: BlockIndent
-BreakBeforeBraces: Allman
-
+ColumnLimit: 100
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
 ContinuationIndentWidth: 2
-AccessModifierOffset: -2
-BreakBeforeBinaryOperators: None
-AlignArrayOfStructures: Left
-AlignConsecutiveBitFields:
-  Enabled: true
-  AcrossEmptyLines: true
-  AcrossComments: false
-BreakBeforeConceptDeclarations: Always
-EmptyLineBeforeAccessModifier: Always 
-LambdaBodyIndentation: Signature
-PackConstructorInitializers: NextLine 
-SeparateDefinitionBlocks: Always
-RequiresClausePosition: OwnLine
-IndentRequiresClause: false
-MaxEmptyLinesToKeep: 2
-ObjCBlockIndentWidth: 2
+IncludeCategories: 
+  - Regex: '^<.*'
+    Priority: 1
+  - Regex: '^".*'
+    Priority: 2
+  - Regex: '.*'
+    Priority: 3
+IncludeIsMainRegex: '([-_](test|unittest))?$'
 IndentAccessModifiers: true
-
+IndentCaseLabels: true
+IndentPPDirectives: BeforeHash
+IndentRequiresClause: false
+MacroBlockBegin: ''
+MacroBlockEnd: ''
+NamespaceIndentation: All
+PackConstructorInitializers: NextLine
+ReflowComments: false
+RequiresClausePosition: OwnLine
 RequiresExpressionIndentation: OuterScope
-
+SeparateDefinitionBlocks: Always
+SpacesInAngles: false
+SpacesInContainerLiterals: false
+Standard: c++20
+TabWidth: 2
+UseTab: Always
 ...

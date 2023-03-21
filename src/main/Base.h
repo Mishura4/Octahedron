@@ -52,28 +52,31 @@ namespace Octahedron
   template <typename T>
   concept scoped_enum = std::is_enum_v<T> && !implicitly_convertible_to<T, std::underlying_type_t<T>>;
 
-  template <typename T, typename U>
-  requires(sizeof(T) < sizeof(U) && !std::is_reference_v<T> && std::is_unsigned_v<T> ||
-           std::is_signed_v<std::remove_cvref_t<U>>) &&
-          requires { std::declval<T &>() = static_cast<T>(std::declval<U>()); }
-
-  [[msvc::intrinsic]] constexpr T narrow_cast(U &&value) noexcept
-  {
-    return (static_cast<T>(value));
-  }
+	template <typename T, typename U>
+		requires(std::is_scalar_v<U> &&
+						 std::is_scalar_v<T> &&
+						 (sizeof(T) < sizeof(U) || (sizeof(T) == sizeof(U) && std::is_signed_v<T> && std::is_unsigned_v<U>)))
+	[[msvc::intrinsic]] constexpr T narrow_cast(U value) noexcept
+	{
+		if constexpr (std::integral<U> && std::integral<T> && std::is_signed_v<T> && std::is_unsigned_v<U>)
+			return (static_cast<T>(value & static_cast<U>(std::numeric_limits<T>::max())));
+		else
+			return (static_cast<T>(value));
+	}
 
   template <typename T>
   requires(std::is_arithmetic_v<T> && std::is_signed_v<T> && !std::is_reference_v<T>)
-  [[msvc::intrinsic]] constexpr auto to_unsigned(T &&value) noexcept
+  [[msvc::intrinsic]] constexpr auto to_unsigned(T value) noexcept
   {
     return static_cast<std::make_unsigned_t<T>>(value);
   }
 
   template <typename T>
-  requires(std::is_arithmetic_v<T> && !std::is_signed_v<T> && !std::is_reference_v<T>)
-  [[msvc::intrinsic]] constexpr auto to_signed(T &&value) noexcept
+  requires(std::is_arithmetic_v<T> &&
+					 !std::is_signed_v<T>)
+  [[msvc::intrinsic]] constexpr auto to_signed(T value) noexcept
   {
-    return static_cast<std::make_unsigned_t<T>>(value);
+    return (static_cast<std::make_unsigned_t<T>>(value & std::numeric_limits<T>::max()));
   }
 
   template <typename T>
@@ -229,7 +232,23 @@ namespace Octahedron
       requires(scoped_enum<T>) = default;
 
       std::underlying_type_t<T> value;
-  };
+	};
+
+	template <size_t N>
+	constexpr auto byte_array(const unsigned char (&arr)[N]) noexcept -> std::array<std::byte, N>
+	{
+		constexpr auto impl =
+			[]<size_t... Ns>(const unsigned char(&arr0)[N], std::index_sequence<Ns...>) constexpr noexcept
+			-> std::array<std::byte, N> { return {std::byte{arr0[Ns]}...}; };
+
+		return (impl(arr, std::make_index_sequence<N>()));
+	}
+
+#ifdef NDEBUG
+#  define octa_assert(a) __assume(!(a))
+#else
+#  define octa_assert(a) assert(a)
+#endif
 }  // namespace Octahedron
 
 #endif

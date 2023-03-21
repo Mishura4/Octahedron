@@ -48,6 +48,7 @@ namespace Octahedron
   {
     if (!isLogEnabled(level))
       return;
+    //auto line = fmt::format(fmt, (Formatter<std::decay_t<decltype(args)>>(loggable_helper<Args>::get(args)))...);
     auto line = fmt::format(fmt, loggable_helper<Args>::get(args)...);
 
     log(level, line);

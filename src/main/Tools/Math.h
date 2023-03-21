@@ -16,16 +16,34 @@ namespace Octahedron
   }
 
   template <class T, class U>
-  requires(!std::is_same_v<T, U>)
+	requires(!std::is_same_v<std::remove_reference_t<T>, std::remove_reference_t<U>>)
   constexpr auto max(T &&a, U &&b)
   {
-    using type = std::common_type<T, U>::type;
+  	using t = std::remove_reference_t<T>;
+  	using u = std::remove_reference_t<U>;
 
-    return (a > b ? static_cast<type>(a) : static_cast<type>(b));
+		if constexpr (std::is_integral_v<t> && std::is_integral_v<u>)
+		{
+			constexpr bool needs_unsigned = std::is_unsigned_v<t> != std::is_unsigned_v<u>;
+			using smaller_type = std::conditional_t<(sizeof(t) > sizeof(u)), u, t>;
+			using final_type =
+				std::conditional_t<needs_unsigned, std::make_unsigned_t<smaller_type>, smaller_type>;
+
+			auto a2 = static_cast<final_type>(a & std::numeric_limits<final_type>::max());
+			auto b2 = static_cast<final_type>(b & std::numeric_limits<final_type>::max());
+
+			return (a2 > b2 ? a2 : b2);
+		}
+		else
+		{
+			using type = std::common_type_t<T, U>;
+
+			return (a > b ? static_cast<type>(a) : static_cast<type>(b));
+		}
   }
 
   template <class T, class U>
-  requires(std::is_same_v<T, U>)
+	requires(std::is_same_v<std::remove_reference_t<T>, std::remove_reference_t<U>>)
   constexpr auto max(T &&a, U &&b)
   {
     return (a > b ? a : b);
@@ -42,14 +60,34 @@ namespace Octahedron
   }
 
   template <class T, class U>
-  requires(!std::is_same_v<T, U>)
+	requires(!std::is_same_v<std::remove_reference_t<T>, std::remove_reference_t<U>>)
   constexpr auto min(T &&a, U &&b)
-  {
-    return (static_cast<std::common_type_t<T, U>>(a < b ? a : b));
+	{
+		using t = std::remove_reference_t<T>;
+		using u = std::remove_reference_t<U>;
+
+		if constexpr (std::is_integral_v<t> && std::is_integral_v<u>)
+		{
+			constexpr bool needs_signed = std::is_unsigned_v<t> != std::is_unsigned_v<u>;
+			using smaller_type						= std::conditional_t<(sizeof(t) > sizeof(u)), u, t>;
+			using final_type =
+				std::conditional_t<needs_signed, std::make_signed_t<smaller_type>, smaller_type>;
+
+			auto a2 = static_cast<final_type>(a & std::numeric_limits<final_type>::max());
+			auto b2 = static_cast<final_type>(b & std::numeric_limits<final_type>::max());
+
+			return (a2 < b2 ? a2 : b2);
+		}
+		else
+		{
+			using type = std::common_type_t<T, U>;
+
+			return (a > b ? static_cast<type>(a) : static_cast<type>(b));
+		}
   }
 
   template <class T, class U>
-  requires(std::is_same_v<T, U>)
+	requires(std::is_same_v<std::remove_reference_t<T>, std::remove_reference_t<U>>)
   constexpr auto min(T &&a, U &&b)
   {
     using type = std::common_type<T, U>::type;

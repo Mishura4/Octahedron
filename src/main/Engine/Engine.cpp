@@ -5,6 +5,9 @@
 #include <variant>
 
 #include "Engine/Engine.h"
+
+#include <iostream>
+
 #include "IO/FileSystem.h"
 #include "IO/FileStream.h"
 #include "IO/Logger.h"
@@ -68,7 +71,7 @@ namespace
       static constexpr inline auto inverted = [](auto &&...args) { return (!Fun()(args...)); };
   };
 
-  constexpr inline Predicate isWhitespace = [](auto &&c)
+  constexpr inline Predicate isWhitespace = [](auto &&c) constexpr noexcept
   {
     if constexpr (!requires { c == char{}; })
       return (false);
@@ -87,7 +90,7 @@ namespace
   };
 
   template <size_t N>
-  auto countArgs(std::span<std::string_view> args, ConsoleArgument &argument)
+  auto count_args(std::span<std::string_view> args, ConsoleArgument &argument)
   {
     uint32 args_parsed{0};
 
@@ -113,23 +116,33 @@ namespace
   template <typename T, size_t N>
   using arg_field = typename T::field_type_list::template at<N>;
 
-  template <std::ranges::range R, typename... Fields>
-  size_t parseArgument(R args, Registry<Fields...> &registry)
+  template <typename R, typename... Fields>
+	requires(std::ranges::range<std::remove_reference_t<R>>)
+  size_t parse_argument(R &&args, Registry<Fields...> &registry)
   {
     using registry_type = Registry<Fields...>;
 
-    constexpr auto impl =
+    constexpr auto impl0 =
       []<size_t... Ns>(R args, registry_type &registry, std::index_sequence<Ns...>)
-    {
-      size_t ret{1};
+		{
+			size_t         ret{1};
+			constexpr auto impl1 = []<size_t N>(R args, registry_type & registry, size_t &nargs) -> bool
+			{
+				constexpr auto key = arg_field<registry_type, N>::key;
 
-      ((registry.get<arg_field<registry_type, Ns>::key>().compare(args.front()) &&
-        (ret = countArgs<Ns>(args, registry.get<arg_field<registry_type, Ns>::key>()), true)) ||
-       ...);
+				if (auto &field = registry.template get<key>(); field.compare(args.front()))
+				{
+					nargs = count_args<N>(args, field);
+					return (true);
+				}
+				return (false);
+			};
+
+      (impl1.template operator()<Ns>(args, registry, ret) || ...);
       return (ret);
     };
 
-    return {impl(args, registry, std::make_index_sequence<registry_type::key_list::size>())};
+    return {impl0(args, registry, std::make_index_sequence<registry_type::key_list::size>())};
   }
 }  // namespace
 
@@ -168,12 +181,12 @@ Engine::Engine(int argc, const char *const argv[])
     field<"PACKAGEDIRS">(ConsoleArgument{"k"sv, "packagedirs"sv})};
 
   std::vector<std::string_view> _args{argv, argv + argc};
-  for (auto it = _args.begin(); it != _args.end();)
+	size_t args_parsed = 1;
+  while (args_parsed < argc)
   {
-    ++it;
-    auto args_parsed = parseArgument(std::ranges::subrange(it, _args.end()), parameters);
+    size_t n = parse_argument(_args | v::drop(args_parsed), parameters);
 
-    std::advance(it, args_parsed);
+    args_parsed += n;
   }
 
   if (!parameters.get<"HOMEDIR">().value.empty())
@@ -181,15 +194,27 @@ Engine::Engine(int argc, const char *const argv[])
   if (!parameters.get<"LOGFILE">().value.empty())
     setLogFile(parameters.get<"LOGFILE">().value);
 
-  namespace stdr = std::ranges;
+	namespace stdr = std::ranges;
 
-  const auto packageDirs = parameters.get<"PACKAGEDIRS">().value;
-  for (auto it = packageDirs.begin(); it != packageDirs.end();)
+	std::string_view package_dirs     = parameters.get<"PACKAGEDIRS">().value;
+	char             escape_delimiter = 0;
+	constexpr auto             is_dir           = [&](auto c) noexcept -> bool
+	{
+		if (isWhitespace(c) && escape_delimiter == 0)
+      return (false);
+		if (c == escape_delimiter)
+			escape_delimiter = 0;
+		return (true);
+	};
+
+	while (!package_dirs.empty())
   {
-    auto begin = stdr::find_if(stdr::subrange(it, packageDirs.end()), !isWhitespace);
-    auto end   = stdr::find_if(stdr::subrange(begin, packageDirs.end()), isWhitespace);
-    it         = end;
-    _filesystem.addPackageDir({begin, end});
+		auto end = std::ranges::find_if_not(package_dirs, is_dir);
+		auto range = package_dirs | v::take(end - package_dirs.begin());
+
+		_filesystem.addPackageDir(range);
+		auto next = std::ranges::find_if_not(end, package_dirs.end(), isWhitespace);
+		package_dirs = package_dirs | v::drop(next - package_dirs.begin());
   }
 }
 

@@ -70,7 +70,7 @@ auto SeekableStream::toRWops() -> ManagedResource<SDL_RWops *, RWopsCleaner>
   return (rw);
 }
 
-size_t SeekableStream::tell()
+size_t SeekableStream::tell() const
 {
   return (std::numeric_limits<size_t>::max());
 }
@@ -86,4 +86,20 @@ size_t SeekableStream::size()
   if (pos != end)
     seek(pos, SEEK_SET);
   return (end);
+}
+
+auto IOStream::getLine(size_t max_size) -> std::optional<std::string>
+{
+	char				c;
+	std::string ret;
+
+	for (int i = 0; i < max_size; ++i)
+	{
+		if (read({reinterpret_cast<std::byte *>(&c), 1}) != 1)
+			return (ret);
+		if (c == 0 || c == '\n')
+			return (ret);
+		ret.push_back(c);
+	}
+	return (ret);
 }

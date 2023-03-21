@@ -68,6 +68,8 @@ namespace Octahedron
         return (write(std::span{data, size * sizeof(T)}) / sizeof(T));
       }
 
+			virtual auto getLine(size_t max_size = (2uLL << 15)) -> std::optional<std::string>;
+
       virtual size_t read(std::span<std::byte> buf)        = 0;
       virtual size_t write(std::span<const std::byte> buf) = 0;
 
@@ -82,15 +84,13 @@ namespace Octahedron
 
       virtual ~SeekableStream() = default;
 
-      virtual size_t tell()                                 = 0;
-      virtual bool seek(ssize_t pos, int whence = SEEK_SET) = 0;
+			[[nodiscard]] virtual size_t tell() const = 0;
+      virtual bool   seek(ssize_t pos, int whence = SEEK_SET) = 0;
 
       virtual size_t size();
 
-      virtual auto getLine(size_t max_size = std::string::npos) -> std::optional<std::string> = 0;
-
       auto toRWops() -> ManagedResource<SDL_RWops *, RWopsCleaner>;
-  };
+	};
 
 }  // namespace Octahedron
 

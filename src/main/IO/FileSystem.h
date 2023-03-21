@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <optional>
 #include <ranges>
+#include <string>
 
 #include <fmt/core.h>
 
@@ -87,10 +88,13 @@ namespace Octahedron
 
       bool remove(std::string_view path);
       bool rename(std::string_view old_path, std::string_view new_path);
-      bool createPath(std::string_view path);
+			bool createPath(std::string_view path);
 
-      auto open(std::string_view path, BitSet<OpenFlags> mode = OpenFlags::DEFAULT)
-        -> std::unique_ptr<FileStream>;
+			auto open(std::string_view path, BitSet<OpenFlags> mode = OpenFlags::DEFAULT)
+				-> std::unique_ptr<FileStream>;
+
+			auto openGZ(std::string_view path, BitSet<OpenFlags> mode = OpenFlags::DEFAULT)
+				-> std::unique_ptr<FileStream>;
 
       // LEGACY : to be replaced down the line
       auto openSDLRWops(std::string_view path, BitSet<OpenFlags> mode = OpenFlags::DEFAULT)

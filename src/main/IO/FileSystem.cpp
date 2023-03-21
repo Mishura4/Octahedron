@@ -4,6 +4,9 @@
 
 #include <fstream>
 
+#include "GZFileStream.h"
+#include "RawFileStream.h"
+
 using Octahedron::FileSystem;
 
 auto Octahedron::getUserHomeDir() -> std::optional<stdfs::path>
@@ -124,6 +127,16 @@ auto FileSystem::open(
     _createPath(_path->parent_path());
   return (RawFileStream::_open(*_path, mode));
 }
+
+auto FileSystem::openGZ(std::string_view path, BitSet<OpenFlags> mode) -> std::unique_ptr<FileStream>
+{
+	auto raw_file = open(path, mode);
+
+	if (!raw_file)
+		return {nullptr};
+	return (GZFileStream::_fromRawStream(std::move(raw_file), mode));
+}
+
 
 #include <SDL.h>
 
