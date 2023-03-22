@@ -30,8 +30,24 @@ if (MSVC)
 endif()
 
 target_precompile_headers(Octahedron PRIVATE
-    ${CMAKE_CURRENT_LIST_DIR}/IO/IOInterface.h
-    ${CMAKE_CURRENT_LIST_DIR}/IO/FileStream.h
+        ${CMAKE_CURRENT_LIST_DIR}/Octahedron.h
+        ${CMAKE_CURRENT_LIST_DIR}/Base.h
+        ${CMAKE_CURRENT_LIST_DIR}/Engine/Engine.h
+        ${CMAKE_CURRENT_LIST_DIR}/Tools/ProtectedPtr.h
+        ${CMAKE_CURRENT_LIST_DIR}/Tools/Math.h
+        ${CMAKE_CURRENT_LIST_DIR}/Tools/StringLiteral.h
+        ${CMAKE_CURRENT_LIST_DIR}/Tools/Exception.h
+        ${CMAKE_CURRENT_LIST_DIR}/Tools/ManagedResource.h
+        ${CMAKE_CURRENT_LIST_DIR}/IO/Logger.h
+        ${CMAKE_CURRENT_LIST_DIR}/IO/FileSystem.h
+        ${CMAKE_CURRENT_LIST_DIR}/IO/FileStream.h
+        ${CMAKE_CURRENT_LIST_DIR}/IO/IOInterface.h
+        ${CMAKE_CURRENT_LIST_DIR}/IO/GZFileStream.h
+        ${CMAKE_CURRENT_LIST_DIR}/IO/RawFileStream.h
+        ${CMAKE_CURRENT_LIST_DIR}/IO/Serializer.h
+        ${CMAKE_CURRENT_LIST_DIR}/IO/IOStream.h
+        ${CMAKE_CURRENT_LIST_DIR}/IO/IOInterface.h
+        ${CMAKE_CURRENT_LIST_DIR}/IO/FileStream.h
 )
 
 target_include_directories(Octahedron PUBLIC ${CMAKE_CURRENT_LIST_DIR})
@@ -45,7 +61,12 @@ target_link_libraries(Octahedron PUBLIC zlib)
 
 target_sources(Octahedron
     PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}/Octahedron.h
-        ${CMAKE_CURRENT_LIST_DIR}/Tools/ProtectedPtr.h
+        ${CMAKE_CURRENT_LIST_DIR}/Octahedron.cpp
         ${CMAKE_CURRENT_LIST_DIR}/Engine/Engine.cpp
- "Tools/Math.h" "Tools/StringLiteral.h" "Tools/Exception.h" "Engine/Engine.h" "Tools/ManagedResource.h" "IO/Logger.h" "IO/FileSystem.h" "IO/FileSystem.cpp" "Octahedron.cpp" "Base.h" "IO/IOStream.h" "IO/IOStream.cpp" "IO/FileStream.cpp" "IO/FileStream.h" "IO/IOInterface.h" "IO/GZFileStream.h" "IO/GZFileStream.cpp" "IO/RawFileStream.cpp" "IO/RawFileStream.h" "IO/DynamicBuffer.cpp"  "IO/Serializer.h")
+        ${CMAKE_CURRENT_LIST_DIR}/IO/FileSystem.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/IO/IOStream.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/IO/FileStream.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/IO/GZFileStream.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/IO/RawFileStream.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/IO/DynamicBuffer.cpp
+)
