@@ -21,6 +21,8 @@ auto RawFileStream::_open(const stdfs::path &path, BitSet<OpenFlags> mode)
       std::error_code err;
 
       std::filesystem::remove(path, err);
+    	if (!err)
+				log(LogLevel::WARN, "failed to remove temporary file: {} ({})", err.message(), path);
     };
   }
 	ret->_file = std::move(file);
