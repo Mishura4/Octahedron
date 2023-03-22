@@ -3,6 +3,8 @@
 #include "engine.h"
 #include "SDL_image.h"
 
+#include "../../main/IO/Serializer.h"
+
 #ifndef SDL_IMAGE_VERSION_ATLEAST
 #define SDL_IMAGE_VERSION_ATLEAST(X, Y, Z) \
     (SDL_VERSIONNUM(SDL_IMAGE_MAJOR_VERSION, SDL_IMAGE_MINOR_VERSION, SDL_IMAGE_PATCHLEVEL) >= SDL_VERSIONNUM(X, Y, Z))
@@ -2118,154 +2120,80 @@ static bool comparevslot(const VSlot &dst, const VSlot &src, int diff)
     return true;
 }
 
-void packvslot(vector<uchar> &buf, const VSlot &src)
+bool unpackvslot(Octahedron::Serializer<std::span<uchar>> &buf, VSlot & dst, bool delta)
 {
-    if(src.changed & (1<<VSLOT_SHPARAM))
-    {
-        loopv(src.params)
-        {
-            const SlotShaderParam &p = src.params[i];
-            buf.put(VSLOT_SHPARAM);
-            sendstring(p.name, buf);
-            loopj(4) putfloat(buf, p.val[j]);
-        }
-    }
-    if(src.changed & (1<<VSLOT_SCALE))
-    {
-        buf.put(VSLOT_SCALE);
-        putfloat(buf, src.scale);
-    }
-    if(src.changed & (1<<VSLOT_ROTATION))
-    {
-        buf.put(VSLOT_ROTATION);
-        putint(buf, src.rotation);
-    }
-    if(src.changed & (1<<VSLOT_OFFSET))
-    {
-        buf.put(VSLOT_OFFSET);
-        putint(buf, src.offset.x);
-        putint(buf, src.offset.y);
-    }
-    if(src.changed & (1<<VSLOT_SCROLL))
-    {
-        buf.put(VSLOT_SCROLL);
-        putfloat(buf, src.scroll.x);
-        putfloat(buf, src.scroll.y);
-    }
-    if(src.changed & (1<<VSLOT_LAYER))
-    {
-        buf.put(VSLOT_LAYER);
-        putuint(buf, vslots.inrange(src.layer) && !vslots[src.layer]->changed ? src.layer : 0);
-    }
-    if(src.changed & (1<<VSLOT_ALPHA))
-    {
-        buf.put(VSLOT_ALPHA);
-        putfloat(buf, src.alphafront);
-        putfloat(buf, src.alphaback);
-    }
-    if(src.changed & (1<<VSLOT_COLOR))
-    {
-        buf.put(VSLOT_COLOR);
-        putfloat(buf, src.colorscale.r);
-        putfloat(buf, src.colorscale.g);
-        putfloat(buf, src.colorscale.b);
-    }
-    if(src.changed & (1<<VSLOT_REFRACT))
-    {
-        buf.put(VSLOT_REFRACT);
-        putfloat(buf, src.refractscale);
-        putfloat(buf, src.refractcolor.r);
-        putfloat(buf, src.refractcolor.g);
-        putfloat(buf, src.refractcolor.b);
-    }
-    if(src.changed & (1<<VSLOT_DETAIL))
-    {
-        buf.put(VSLOT_DETAIL);
-        putuint(buf, vslots.inrange(src.detail) && !vslots[src.detail]->changed ? src.detail : 0);
-    }
-    buf.put(0xFF);
-}
-
-void packvslot(vector<uchar> &buf, int index)
-{
-    if(vslots.inrange(index)) packvslot(buf, *vslots[index]);
-    else buf.put(0xFF);
-}
-
-void packvslot(vector<uchar> &buf, const VSlot *vs)
-{
-    if(vs) packvslot(buf, *vs);
-    else buf.put(0xFF);
-}
-
-bool unpackvslot(ucharbuf &buf, VSlot &dst, bool delta)
-{
-    while(buf.remaining())
-    {
-        int changed = buf.get();
-        if(changed >= 0x80) break;
-        switch(changed)
-        {
-            case VSLOT_SHPARAM:
-            {
-                string name;
-                getstring(name, buf);
-                SlotShaderParam p = { name[0] ? getshaderparamname(name) : NULL, -1, 0, { 0, 0, 0, 0 } };
-                loopi(4) p.val[i] = getfloat(buf);
-                if(p.name) dst.params.add(p);
-                break;
-            }
-            case VSLOT_SCALE:
-                dst.scale = getfloat(buf);
-                if(dst.scale <= 0) dst.scale = 1;
-                else if(!delta) dst.scale = clamp(dst.scale, 1/8.0f, 8.0f);
-                break;
-            case VSLOT_ROTATION:
-                dst.rotation = getint(buf);
-                if(!delta) dst.rotation = clamp(dst.rotation, 0, 7);
-                break;
-            case VSLOT_OFFSET:
-                dst.offset.x = getint(buf);
-                dst.offset.y = getint(buf);
-                if(!delta) dst.offset.max(0);
-                break;
-            case VSLOT_SCROLL:
-                dst.scroll.x = getfloat(buf);
-                dst.scroll.y = getfloat(buf);
-                break;
-            case VSLOT_LAYER:
-            {
-                int tex = getuint(buf);
-                dst.layer = vslots.inrange(tex) ? tex : 0;
-                break;
-            }
-            case VSLOT_ALPHA:
-                dst.alphafront = clamp(getfloat(buf), 0.0f, 1.0f);
-                dst.alphaback = clamp(getfloat(buf), 0.0f, 1.0f);
-                break;
-            case VSLOT_COLOR:
-                dst.colorscale.r = clamp(getfloat(buf), 0.0f, 2.0f);
-                dst.colorscale.g = clamp(getfloat(buf), 0.0f, 2.0f);
-                dst.colorscale.b = clamp(getfloat(buf), 0.0f, 2.0f);
-                break;
-            case VSLOT_REFRACT:
-                dst.refractscale = clamp(getfloat(buf), 0.0f, 1.0f);
-                dst.refractcolor.r = clamp(getfloat(buf), 0.0f, 1.0f);
-                dst.refractcolor.g = clamp(getfloat(buf), 0.0f, 1.0f);
-                dst.refractcolor.b = clamp(getfloat(buf), 0.0f, 1.0f);
-                break;
-            case VSLOT_DETAIL:
-            {
-                int tex = getuint(buf);
-                dst.detail = vslots.inrange(tex) ? tex : 0;
-                break;
-            }
-            default:
-                return false;
-        }
-        dst.changed |= 1<<changed;
-    }
-    if(buf.overread()) return false;
+	  try
+	  {
+			while(buf.bytesAvailable())
+			{
+				int changed = buf.get();
+				if(changed >= 0x80) break;
+				switch(changed)
+				{
+					case VSLOT_SHPARAM:
+					{
+						auto name = buf.get<std::string>();
+						SlotShaderParam p = { name[0] ? getshaderparamname(name.c_str()) : NULL, -1, 0, { 0, 0, 0, 0 } };
+						loopi(4) p.val[i] = buf.get<float>();
+						if(p.name) dst.params.add(p);
+						break;
+					}
+					case VSLOT_SCALE:
+						dst.scale = buf.get<float>();
+						if(dst.scale <= 0) dst.scale = 1;
+						else if(!delta) dst.scale = clamp(dst.scale, 1/8.0f, 8.0f);
+						break;
+					case VSLOT_ROTATION:
+						dst.rotation = buf.get<int>();
+						if(!delta) dst.rotation = clamp(dst.rotation, 0, 7);
+						break;
+					case VSLOT_OFFSET:
+						dst.offset.x = buf.get<int>();
+						dst.offset.y = buf.get<int>();
+						if(!delta) dst.offset.max(0);
+						break;
+					case VSLOT_SCROLL:
+						dst.scroll.x = buf.get<float>();
+						dst.scroll.y = buf.get<float>();
+						break;
+					case VSLOT_LAYER:
+					{
+						int tex   = buf.get<uint>();
+						dst.layer = vslots.inrange(tex) ? tex : 0;
+						break;
+					}
+					case VSLOT_ALPHA:
+						dst.alphafront = clamp(buf.get<float>(), 0.0f, 1.0f);
+						dst.alphaback = clamp(buf.get<float>(), 0.0f, 1.0f);
+						break;
+					case VSLOT_COLOR:
+						dst.colorscale.r = clamp(buf.get<float>(), 0.0f, 2.0f);
+						dst.colorscale.g = clamp(buf.get<float>(), 0.0f, 2.0f);
+						dst.colorscale.b = clamp(buf.get<float>(), 0.0f, 2.0f);
+						break;
+					case VSLOT_REFRACT:
+						dst.refractscale = clamp(buf.get<float>(), 0.0f, 1.0f);
+						dst.refractcolor.r = clamp(buf.get<float>(), 0.0f, 1.0f);
+						dst.refractcolor.g = clamp(buf.get<float>(), 0.0f, 1.0f);
+						dst.refractcolor.b = clamp(buf.get<float>(), 0.0f, 1.0f);
+						break;
+					case VSLOT_DETAIL:
+					{
+						int tex    = buf.get<uint>();
+						dst.detail = vslots.inrange(tex) ? tex : 0;
+						break;
+					}
+					default:
+						return false;
+				}
+				dst.changed |= 1<<changed;
+			}
+		}
+		catch (const std::runtime_error &e)
+		{
+			Octahedron::log(Octahedron::LogLevel::ERROR, "failed to retrieve vslots: {}", e.what());
+		}
+    //if(buf.overread()) return false;
     return true;
 }
 
@@ -3376,13 +3304,13 @@ struct DDSURFACEDESC2
 };
 
 template <>
-struct Octahedron::Serializer<DDPIXELFORMAT>
+struct Octahedron::IOHelper<DDPIXELFORMAT>
 {
     template <typename T>
     requires(readable<T>)
 		auto get(IOReadable<T> *self, DDPIXELFORMAT &obj) const
     {
-            return (self->template get<Endianness::LITTLE>(
+            return (self->template getAll<Endianness::LITTLE>(
               obj.dwSize,
               obj.dwFlags,
               obj.dwFourCC,
@@ -3398,7 +3326,7 @@ struct Octahedron::Serializer<DDPIXELFORMAT>
     requires(writeable<T>)
     auto put(IOWriteable<T> *self, const DDPIXELFORMAT &obj) const
     {
-            return (self->template put<Endianness::LITTLE>(
+            return (self->template putAll<Endianness::LITTLE>(
               obj.dwSize,
               obj.dwFlags,
               obj.dwFourCC,
@@ -3412,13 +3340,13 @@ struct Octahedron::Serializer<DDPIXELFORMAT>
 };
 
 template <>
-struct Octahedron::Serializer<DDSURFACEDESC2>
+struct Octahedron::IOHelper<DDSURFACEDESC2>
 {
     template <typename T>
     requires(readable<T>)
 		auto get(IOReadable<T> *self, DDSURFACEDESC2 &obj) const
     {
-        return (self->template get<Endianness::LITTLE>(
+        return (self->template getAll<Endianness::LITTLE>(
           obj.dwSize,
           obj.dwFlags,
           obj.dwHeight,
@@ -3439,7 +3367,7 @@ struct Octahedron::Serializer<DDSURFACEDESC2>
     requires(writeable<T>)
 		io_result put(IOWriteable<T> *self, const DDSURFACEDESC2 &obj) const
     {
-        return (self->template put<Endianness::LITTLE>(
+        return (self->template putAll<Endianness::LITTLE>(
           obj.dwSize,
           obj.dwFlags,
           obj.dwHeight,

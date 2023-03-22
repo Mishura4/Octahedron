@@ -2885,7 +2885,7 @@ namespace server
     {
         if(sender<0 || p.packet->flags&ENET_PACKET_FLAG_UNSEQUENCED || chan > 2) return;
         char text[MAXTRANS];
-        int type;
+				netmsg			type;
         clientinfo *ci = sender>=0 ? getinfo(sender) : NULL, *cq = ci, *cm = ci;
         if(ci && !ci->connected)
         {
@@ -2964,7 +2964,10 @@ namespace server
         #define QUEUE_UINT(n) QUEUE_BUF(putuint(cm->messages, n))
         #define QUEUE_STR(text) QUEUE_BUF(sendstring(text, cm->messages))
         int curmsg;
-        while((curmsg = p.length()) < p.maxlen) switch(type = checktype(getint(p), ci))
+				while ((curmsg = p.length()) < p.maxlen)
+				{
+						type = netmsg(checktype(getint(p), ci));
+						switch (type)
         {
             case N_POS:
             {
@@ -3691,7 +3694,8 @@ namespace server
                 }
                 break;
             }
-        }
+				}
+				}
     }
 
     int laninfoport() { return TESSERACT_LANINFO_PORT; }

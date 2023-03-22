@@ -218,6 +218,25 @@ struct block3
     int size()    const { return s.x*s.y*s.z; }
 };
 
+namespace Octahedron
+{
+	template <>
+	struct IOHelper<block3>
+	{
+				template <typename T>
+				auto get(IOReadable<T> *buf, block3 &vec) const
+				{
+					return (buf->getAll(vec.o, vec.s, vec.grid, vec.orient));
+				}
+
+				template <typename T>
+				auto put(IOWriteable<T> *buf, const block3 &vec) const
+				{
+					return (buf->putAll(vec.o, vec.s, vec.grid, vec.orient));
+				}
+	};
+} // namespace Octahedron
+
 struct editinfo
 {
     block3 *copy;

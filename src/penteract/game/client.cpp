@@ -737,9 +737,10 @@ namespace game
                     tex1 ? tex1 : arg1, arg2))
                 {
                     messages.pad(2);
-                    int offset = messages.length();
+                    int offset = messages.size();
                     if(tex1) packvslot(messages, arg1);
-                    *(ushort *)&messages[offset-2] = lilswap(ushort(messages.length() - offset));
+										messages.seek(offset-2, SEEK_SET);
+										messages.put<ushort>(messages.size() - offset);
                 }
                 break;
             }
@@ -752,10 +753,10 @@ namespace game
                     tex1 ? tex1 : arg1, tex2 ? tex2 : arg2, arg3))
                 {
                     messages.pad(2);
-                    int offset = messages.length();
+                    int offset = messages.size();
                     if(tex1) packvslot(messages, arg1);
-                    if(tex2) packvslot(messages, arg2);
-                    *(ushort *)&messages[offset-2] = lilswap(ushort(messages.length() - offset));
+										messages.seek(offset-2, SEEK_SET);
+										messages.put<ushort>(messages.size() - offset);
                 }
                 break;
             }
@@ -772,10 +773,11 @@ namespace game
                     sel.cx, sel.cxs, sel.cy, sel.cys, sel.corner,
                     arg1, arg2))
                 {
-                    messages.pad(2);
-                    int offset = messages.length();
-                    packvslot(messages, vs);
-                    *(ushort *)&messages[offset-2] = lilswap(ushort(messages.length() - offset));
+										messages.pad(2);
+										int offset = messages.size();
+										packvslot(messages, vs);
+										messages.seek(offset - 2, SEEK_SET);
+										messages.put<ushort>(messages.size() - offset);
                 }
                 break;
             }
@@ -876,7 +878,7 @@ namespace game
     int scaletime(int t) { return t*gamespeed; }
 
     // collect c2s messages conveniently
-    vector<uchar> messages;
+    Octahedron::DynamicBuffer messages;
     int messagecn = -1, messagereliable = false;
 
     bool addmsg(int type, const char *fmt, ...)
@@ -933,10 +935,10 @@ namespace game
         if(mcn != messagecn)
         {
             static uchar mbuf[16];
-            ucharbuf m(mbuf, sizeof(mbuf));
+						Octahedron::Serializer m(mbuf, sizeof(mbuf));
             putint(m, N_FROMAI);
             putint(m, mcn);
-            messages.put(mbuf, m.length());
+            messages.put(mbuf, m.tell());
             messagecn = mcn;
         }
         messages.put(buf, p.length());
@@ -969,7 +971,7 @@ namespace game
         if(editmode) toggleedit();
         sessionid = 0;
         mastermode = MM_OPEN;
-        messages.setsize(0);
+        messages.clear();
         messagereliable = false;
         messagecn = -1;
         player1->respawn();
@@ -1103,10 +1105,10 @@ namespace game
             if(cmode) cmode->senditems(p);
             senditemstoserver = false;
         }
-        if(messages.length())
+        if(messages.size())
         {
-            p.put(messages.getbuf(), messages.length());
-            messages.setsize(0);
+						p.put(reinterpret_cast<uchar*>(messages.data()), messages.size());
+            messages.clear();
             if(messagereliable) p.reliable();
             messagereliable = false;
             messagecn = -1;
@@ -1317,10 +1319,13 @@ namespace game
     void parsemessages(int cn, gameent *d, ucharbuf &p)
     {
         static char text[MAXTRANS];
-        int type;
+				netmsg			type;
         bool mapchanged = false, demopacket = false;
 
-        while(p.remaining()) switch(type = getint(p))
+        while(p.remaining())
+        {
+						type = netmsg(getint(p));
+          switch(type)
         {
             case N_DEMOPACKET: demopacket = true; break;
 
@@ -1743,7 +1748,7 @@ namespace game
                         if(p.remaining() < 2) return;
                         int extra = lilswap(*(const ushort *)p.pad(2));
                         if(p.remaining() < extra) return;
-                        ucharbuf ebuf = p.subbuf(extra);
+												Octahedron::ucharbuf ebuf{p.buf + p.len, size_t(extra)};
                         if(sel.validate()) mpedittex(tex, allfaces, sel, ebuf);
                         break;
                     }
@@ -1759,8 +1764,9 @@ namespace game
                             insel = getint(p);
                         if(p.remaining() < 2) return;
                         int extra = lilswap(*(const ushort *)p.pad(2));
-                        if(p.remaining() < extra) return;
-                        ucharbuf ebuf = p.subbuf(extra);
+												if (p.remaining() < extra)
+														return;
+												Octahedron::ucharbuf ebuf{p.buf + p.len, size_t(extra)};
                         if(sel.validate()) mpreplacetex(oldtex, newtex, insel>0, sel, ebuf);
                         break;
                     }
@@ -1771,8 +1777,9 @@ namespace game
                             allfaces = getint(p);
                         if(p.remaining() < 2) return;
                         int extra = lilswap(*(const ushort *)p.pad(2));
-                        if(p.remaining() < extra) return;
-                        ucharbuf ebuf = p.subbuf(extra);
+												if (p.remaining() < extra)
+														return;
+												Octahedron::ucharbuf ebuf{p.buf + p.len, size_t(extra)};
                         if(sel.validate()) mpeditvslot(delta, allfaces, sel, ebuf);
                         break;
                     }
@@ -2022,7 +2029,8 @@ namespace game
             default:
                 neterr("type", cn < 0);
                 return;
-        }
+				}
+				}
     }
 
     struct demoreq

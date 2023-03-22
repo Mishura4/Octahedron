@@ -1,5 +1,7 @@
 // the interface the game uses to access the engine
 
+#include "../../main/IO/Serializer.h"
+
 #include "Engine/Engine.h"
 #include "IO/FileStream.h"
 
@@ -104,17 +106,17 @@ extern bool noedit(bool view = false, bool msg = true);
 extern void toggleedit(bool force = true);
 extern void mpeditface(int dir, int mode, selinfo &sel, bool local);
 extern void mpedittex(int tex, int allfaces, selinfo &sel, bool local);
-extern bool mpedittex(int tex, int allfaces, selinfo &sel, ucharbuf &buf);
+extern bool mpedittex(int tex, int allfaces, selinfo &sel, Octahedron::ucharbuf &buf);
 extern void mpeditmat(int matid, int filter, selinfo &sel, bool local);
 extern void mpflip(selinfo &sel, bool local);
 extern void mpcopy(editinfo *&e, selinfo &sel, bool local);
 extern void mppaste(editinfo *&e, selinfo &sel, bool local);
 extern void mprotate(int cw, selinfo &sel, bool local);
 extern void mpreplacetex(int oldtex, int newtex, bool insel, selinfo &sel, bool local);
-extern bool mpreplacetex(int oldtex, int newtex, bool insel, selinfo &sel, ucharbuf &buf);
+extern bool mpreplacetex(int oldtex, int newtex, bool insel, selinfo &sel, Octahedron::ucharbuf &buf);
 extern void mpdelcube(selinfo &sel, bool local);
 extern void mpremip(bool local);
-extern bool mpeditvslot(int delta, int allfaces, selinfo &sel, ucharbuf &buf);
+extern bool mpeditvslot(int delta, int allfaces, selinfo &sel, Octahedron::ucharbuf &buf);
 extern void mpcalclight(bool local);
 
 // command
@@ -281,9 +283,6 @@ static inline void text_pos(const char *str, int cursor, int &cx, int &cy, int m
 // texture
 
 struct VSlot;
-
-extern void packvslot(vector<uchar> &buf, int index);
-extern void packvslot(vector<uchar> &buf, const VSlot *vs);
 
 // renderlights
 

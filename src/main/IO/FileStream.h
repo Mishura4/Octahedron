@@ -12,24 +12,29 @@
 namespace Octahedron
 {
 
-  class FileSystem;
+	class FileSystem;
 
-  class FileStream : public SeekableStream
-  {
-    public:
-      using IOStream::read;
-      using IOStream::write;
+	class FileStream : public SeekableStream
+	{
+		public:
+			using IOStream::read;
+			using IOStream::write;
 
 			~FileStream() override = default;
 
-			bool flush() override = 0;
+			virtual bool flush() = 0;
 
-      virtual bool eof()   = 0;
+			virtual bool eof() = 0;
 
-      virtual uint32 crc32() { return 0; }
+			virtual uint32 crc32()
+			{
+				return 0;
+			}
 
-      static std::string flagsToOpenMode(BitSet<OpenFlags> mode);
-  };
-}  // namespace Octahedron
+			static std::string flagsToOpenMode(BitSet<OpenFlags> mode);
+
+			auto toRWops() -> ManagedResource<SDL_RWops *, RWopsCleaner> override;
+	};
+} // namespace Octahedron
 
 #endif

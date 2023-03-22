@@ -12,7 +12,7 @@ namespace Octahedron
 	class GZFileStream : public FileStream
 	{
 	public:
-		~GZFileStream();
+		~GZFileStream() override;
 		size_t               read(std::span<std::byte> buf) override;
 		size_t               write(std::span<const std::byte> buf) override;
 		[[nodiscard]] size_t tell() const override;

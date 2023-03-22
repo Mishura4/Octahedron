@@ -686,39 +686,41 @@ namespace ai
 
     void loadwaypoints(bool force, const char *mname)
     {
+    	  using Octahedron::OpenFlags;
+
         string wptname;
         if(!getwaypointfile(mname, wptname)) return;
         if(!force && (waypoints.length() || !strcmp(loadedwaypoints, wptname))) return;
 
-        stream *f = opengzfile(wptname, "rb");
+        auto f = g_engine->fileSystem().openGZ(wptname, OpenFlags::INPUT | OpenFlags::BINARY);
         if(!f) return;
         char magic[4];
-        if(f->read(magic, 4) < 4 || memcmp(magic, "OWPT", 4)) { delete f; return; }
+        if(f->read(magic, 4) < 4 || memcmp(magic, "OWPT", 4)) { return; }
 
-        copystring(loadedwaypoints, wptname);
+				copystring(loadedwaypoints, wptname);
 
+				// TODO: EXCEPTIONS
         waypoints.setsize(0);
         waypoints.add(vec(0, 0, 0));
-        ushort numwp = f->getlil<ushort>();
+        ushort numwp = f->get<ushort>();
         loopi(numwp)
         {
-            if(f->end()) break;
+            if(f->eof()) break;
             vec o;
-            o.x = f->getlil<float>();
-            o.y = f->getlil<float>();
-            o.z = f->getlil<float>();
+            o.x = f->get<float>();
+            o.y = f->get<float>();
+            o.z = f->get<float>();
             waypoint &w = waypoints.add(waypoint(o, getweight(o)));
-            int numlinks = f->getchar(), k = 0;
+            int numlinks = f->get<char>(), k = 0;
             loopi(numlinks)
             {
-                if((w.links[k] = f->getlil<ushort>()))
+                if((w.links[k] = f->get<ushort>()))
                 {
                     if(++k >= MAXWAYPOINTLINKS) break;
                 }
             }
         }
 
-        delete f;
         conoutf("loaded %d waypoints from %s", numwp, wptname);
 
         if(!cleanwaypoints()) clearwpcache();
@@ -726,29 +728,31 @@ namespace ai
     ICOMMAND(loadwaypoints, "s", (char *mname), loadwaypoints(true, mname));
 
     void savewaypoints(bool force, const char *mname)
-    {
+		{
+				using Octahedron::OpenFlags;
+
         if((!dropwaypoints && !force) || waypoints.empty()) return;
 
         string wptname;
         if(!getwaypointfile(mname, wptname)) return;
 
-        stream *f = opengzfile(wptname, "wb");
+				// TODO: EXCEPTIONS
+				auto f = g_engine->fileSystem().openGZ(wptname, OpenFlags::OUTPUT | OpenFlags::INPUT);
         if(!f) return;
         f->write("OWPT", 4);
-        f->putlil<ushort>(waypoints.length()-1);
+        f->put<ushort>(waypoints.length()-1);
         for(int i = 1; i < waypoints.length(); i++)
         {
             waypoint &w = waypoints[i];
-            f->putlil<float>(w.o.x);
-            f->putlil<float>(w.o.y);
-            f->putlil<float>(w.o.z);
+						f->put<float>(w.o.x);
+						f->put<float>(w.o.y);
+						f->put<float>(w.o.z);
             int numlinks = 0;
             loopj(MAXWAYPOINTLINKS) { if(!w.links[j]) break; numlinks++; }
-            f->putchar(numlinks);
-            loopj(numlinks) f->putlil<ushort>(w.links[j]);
+            f->put<char>(numlinks);
+            loopj(numlinks) f->put<ushort>(w.links[j]);
         }
 
-        delete f;
         conoutf("saved %d waypoints to %s", waypoints.length()-1, wptname);
     }
 

@@ -180,7 +180,7 @@ auto FileSystem::openSDLRWops(std::string_view path,
 
 auto FileSystem::_isAccessible(const stdfs::path &path, BitSet<OpenFlags> mode) const -> bool
 {
-  if (mode & std::ios_base::out)
+	if (mode & (OpenFlags::APPEND | OpenFlags::TRUNCATE)) // will create, so we only need the parent dir
     return (stdfs::exists(path.parent_path()));
   return (stdfs::exists(path));
 }
@@ -188,38 +188,46 @@ auto FileSystem::_isAccessible(const stdfs::path &path, BitSet<OpenFlags> mode) 
 auto FileSystem::_resolvePath(std::string_view file_name, BitSet<OpenFlags> search_mode) const
   -> std::optional<stdfs::path>
 {
-  // rewrite of tesseract's findfile, preserving logic
+	// rewrite of tesseract's findfile, with a few changes
+	const stdfs::path given{stdfs::path(file_name).lexically_normal()};
 
-  if (file_name.starts_with("../"sv))
-    return {std::nullopt};
+	// we outright disable absolute paths or going up
+	constexpr auto is_allowed = [](const stdfs::path &p) -> bool
+	{
+		constexpr std::string_view forbidden[] = {"../"sv};
+		constexpr auto cmp = [](stdfs::path::value_type a, char b) -> bool {
+			return (a == b); };
 
-  std::error_code err;
-  const stdfs::path given{stdfs::path(file_name).lexically_normal()};
+		if (p.is_absolute())
+			return (false);
+		for (auto test : forbidden)
+		{
+			if (std::ranges::mismatch(p.native(), test, cmp).in2 == test.end())
+				return (false);
+		}
+		return (true);
+	};
 
-  constexpr auto is_parent = [](const stdfs::path &given, const stdfs::path &base)
-  {
-    auto [input, end] = std::ranges::mismatch(given, base);
-
-    return (end == std::end(base));
-  };
-  if (given.is_absolute())
-    return {std::nullopt};
+	if (!is_allowed(given))
+		return {std::nullopt};
+	// home directory has highest priority
   if (!_home_dir.empty())
   {
-    stdfs::path path = stdfs::absolute(_home_dir / given);
-
-    if ((search_mode & OpenFlags::OUTPUT) || _isAccessible(path, search_mode))
+  	// if we are creating the file anyway, return the path relative to the home dir
+    if (auto path = stdfs::absolute(_home_dir / given);
+				search_mode & (OpenFlags::APPEND | OpenFlags::TRUNCATE) || _isAccessible(path, search_mode))
       return {path};
   }
+	// only the home dir is modifyable
   if (search_mode & OpenFlags::OUTPUT)
     return {std::nullopt};
+	// package directories have second priority
   for (const stdfs::path &dir : packageDirs())
   {
-    stdfs::path path = stdfs::absolute(dir / given);
-
-    if (_isAccessible(path, search_mode))
+    if (auto path = stdfs::absolute(dir / given); _isAccessible(path, search_mode))
       return {path};
   }
+	// path relative to the working directory has lowest priority
   if (_isAccessible(given, search_mode))
     return {given};
   return {std::nullopt};
@@ -233,14 +241,13 @@ bool FileSystem::remove(std::string_view path)
     return (false);
   std::error_code err;
 
-  if (stdfs::remove(*full_path, err))
-  {
-    log(LogLevel::TRACE, "removed path {}", *full_path);
-    return (true);
-  }
-  else
-    log(LogLevel::TRACE, "could not remove path {}: {}", *full_path, CLOSURE(err.message()));
-  return (false);
+  if (!stdfs::remove(*full_path, err))
+	{
+		log(LogLevel::TRACE, "could not remove path {}: {}", *full_path, CLOSURE(err.message()));
+		return (false);
+	}
+	log(LogLevel::TRACE, "removed path {}", *full_path);
+	return (true);
 }
 
 bool FileSystem::rename(std::string_view old_path, std::string_view new_path)

@@ -167,7 +167,7 @@ namespace Octahedron
 	};
 
 	template <typename T>
-	struct Serializer;
+	struct IOHelper;
 
 	/*template <typename T>
 	struct pfr_helper;
@@ -269,6 +269,7 @@ namespace Octahedron
 		template <typename U, Endianness Endian = Endianness::DEFAULT>
 		requires(
 			std::is_scalar_v<std::remove_reference_t<U>> &&
+			!std::is_enum_v<std::remove_reference_t<U>> &&
 			!std::is_pointer_v<std::remove_reference_t<U>>)
 		io_result put(U value)
 		{
@@ -285,7 +286,7 @@ namespace Octahedron
 		{
 			using type = std::underlying_type_t<decltype(value)>;
 
-			return (put<value, Endian>(static_cast<type>(value)));
+			return (put<type, Endian>(static_cast<type>(value)));
 		}
 
 		template <typename U, Endianness Endian = Endianness::DEFAULT>
@@ -343,9 +344,9 @@ namespace Octahedron
 			!std::ranges::range<std::remove_cvref_t<U>>)
 		io_result put(const U &value)
 		{
-			if constexpr (requires(Serializer<U> t) { t.put(this, std::as_const(value)); })
+			if constexpr (requires(IOHelper<U> t) { t.put(this, std::as_const(value)); })
 			{
-				return (Serializer<U>().put(this, value));
+				return (IOHelper<U>().put(this, value));
 			}
 			// vvv IF THIS FAILS --- SPECIALIZE THIS ^^^
 			else if constexpr (std::is_scalar_v<U> || std::is_aggregate_v<U>)
@@ -383,14 +384,14 @@ namespace Octahedron
 				static_assert(
 					std::is_scalar_v<U> || std::is_aggregate_v<U>,
 					"type must be either scalar and aggregate for implicit serialization via boost::pfr "
-					"or Octahedron::Serializer<U>().get(IOReadable*, U&) must be valid");
+					"or Octahedron::IOHelper<U>().get(IOReadable*, U&) must be valid");
 			}
 		}
 
 		template <Endianness Endian = Endianness::DEFAULT, typename... Us>
 		requires(
 			sizeof...(Us) > 1 && (!std::is_pointer_v<std::remove_reference_t<Us>> && ...))
-		io_result put(Us &&...values)
+		io_result putAll(Us &&...values)
 		{
 			constexpr auto impl = []<typename T0>(IOWriteable *self, T0 &&v) -> io_result
 			{
@@ -419,6 +420,14 @@ namespace Octahedron
 		auto put(const U &v)
 		{
 			return (put<const U&, Endian>(v));
+		}
+
+		template <Endianness Endian = Endianness::DEFAULT>
+		io_result put(const auto *value, auto num)
+		{
+			auto data = reinterpret_cast<const std::byte *>(value);
+
+			return{static_cast<T*>(this)->write(data, num * sizeof(*value)), num * sizeof(*value)};
 		}
 	};
 
@@ -454,6 +463,7 @@ namespace Octahedron
 		template <typename U>
 		requires(
 			std::is_scalar_v<U> &&
+			!std::is_enum_v<std::remove_reference_t<U>> &&
 			!std::is_pointer_v<U> &&
 			!std::ranges::range<U> &&
 			!is_endian_dependent<U>)
@@ -472,9 +482,9 @@ namespace Octahedron
 		{
 			using type = std::remove_reference_t<decltype(value)>;
 
-			if constexpr (requires(Serializer<type> t) { t.get(this, value); })
+			if constexpr (requires(IOHelper<type> t) { t.get(this, value); })
 			{
-				return (Serializer<type>().get(this, value));
+				return (IOHelper<type>().get(this, value));
 			}
 			// vvv IF THIS FAILS --- SPECIALIZE THIS ^^^
 			else if constexpr (std::is_scalar_v<type> || std::is_aggregate_v<type>)
@@ -508,7 +518,7 @@ namespace Octahedron
 			{
 				static_assert(std::is_scalar_v<type> || std::is_aggregate_v<type>,
 					"type must be either scalar and aggregate for implicit serialization via boost::pfr "
-					"or Octahedron::Serializer<U>().put(IOReadable*, const U&) must be valid");
+					"or Octahedron::IOHelper<U>().put(IOReadable*, const U&) must be valid");
 			}
 		}
 
@@ -594,7 +604,7 @@ namespace Octahedron
 		template <Endianness Endian = Endianness::DEFAULT, typename... Ts>
 		requires(sizeof...(Ts) > 1 &&
 			(!std::is_pointer_v<Ts> && ...))
-		io_result get(Ts &...values)
+		io_result getAll(Ts &...values)
 		{
 			constexpr auto impl = []<typename T0>(IOReadable *self, T0 &v) -> io_result
 			{
@@ -617,6 +627,87 @@ namespace Octahedron
 		}
 
 		template <typename U, Endianness Endian = Endianness::DEFAULT>
+		requires(std::ranges::range<U> && is_endian_dependent<std::ranges::range_value_t<U>> && requires(U &u) { std::back_inserter(u); })
+		auto get(U &cont, size_t size)
+		{
+			using value_type = std::remove_reference_t<std::ranges::range_value_t<U>>;
+
+			if constexpr (is_contiguous_data<U> && requires(U &u, size_t s) { u.resize(s); })
+			{
+				cont.resize(size);
+				return (get(std::data(cont), size));
+			}
+			else
+			{
+				if constexpr (requires(U &u, size_t s) { u.reserve(s); })
+					cont.reserve(size);
+
+				value_type buffer;
+				io_result	 ret{0, 0};
+				auto			 inserter = std::back_inserter(cont);
+
+				for (size_t i = 0; i < size; ++i)
+				{
+					io_result extracted = get<value_type, Endian>(buffer);
+
+					ret += extracted;
+					if (!extracted)
+						return (ret);
+					inserter = buffer;
+				}
+				return (ret);
+			}
+		}
+
+		template <typename U>
+		requires(std::ranges::range<U>)
+		auto get(U &cont, size_t size)
+		{
+			using value_type = std::remove_reference_t<std::ranges::range_value_t<U>>;
+
+			if constexpr (is_contiguous_data<U> && requires(U &u, size_t s) { u.resize(s); })
+			{
+				cont.resize(size);
+				return (get(std::data(cont), size));
+			}
+			else
+			{
+				if constexpr (requires(U &u, size_t s) { u.reserve(s); })
+					cont.reserve(size);
+
+				value_type buffer;
+				io_result  ret{0, 0};
+				auto			 inserter = std::back_inserter(cont);
+
+				for (size_t i = 0; i < size; ++i)
+				{
+					io_result extracted = get<value_type>(buffer);
+
+					ret += extracted;
+					if (!extracted)
+						return (ret);
+					inserter = buffer;
+				}
+				return (ret);
+			}
+		}
+
+		io_result get(std::string &str)
+		{
+			size_t size = 0;
+			char c{0x7f};
+
+			while (c != 0)
+			{
+				if (!get(c))
+					return {size, size + 1};
+				str.push_back(c);
+				++size;
+			}
+			return {size, size};
+		}
+
+		template <typename U, Endianness Endian = Endianness::DEFAULT>
 		requires(is_endian_dependent<U>)
 		U get()
 		{
@@ -636,6 +727,12 @@ namespace Octahedron
 			if (!get<U>(ret))
 				throw std::runtime_error("could not retrieve value");
 			return (ret);
+		}
+
+		template <Endianness Endian = Endianness::DEFAULT>
+		int get()
+		{
+			return (get<int, Endian>());
 		}
 	};
 

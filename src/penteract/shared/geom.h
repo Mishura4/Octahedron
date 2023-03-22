@@ -1951,7 +1951,7 @@ static inline float cotan360(int angle) { const vec2 &sc = sincos360[angle]; ret
 namespace Octahedron
 {
 		template <>
-		struct Serializer<vec2>
+		struct IOHelper<vec2>
 		{
 				template <typename T>
 				auto get(IOReadable<T> *interface, vec2 &vec) const
@@ -1960,14 +1960,14 @@ namespace Octahedron
 				}
 
 				template <typename T>
-				auto put(IOReadable<T> *interface, const vec2 &vec) const
+				auto put(IOWriteable<T> *interface, const vec2 &vec) const
 				{
 						return (interface->put(vec.v));
 				}
 		};
 
 		template <>
-		struct Serializer<vec>
+		struct IOHelper<vec>
 		{
 				template <typename T>
 				auto get(IOReadable<T> *interface, vec &vec) const
@@ -1976,7 +1976,39 @@ namespace Octahedron
 				}
 
 				template <typename T>
-				auto put(IOReadable<T> *interface, const vec &vec) const
+				auto put(IOWriteable<T> *interface, const vec &vec) const
+				{
+						return (interface->put(vec.v));
+				}
+		};
+
+		template <>
+		struct IOHelper<ivec>
+		{
+				template <typename T>
+				auto get(IOReadable<T> *interface, ivec &vec) const
+				{
+						return (interface->get(vec.v));
+				}
+
+				template <typename T>
+				auto put(IOWriteable<T> *interface, const ivec &vec) const
+				{
+						return (interface->put(vec.v));
+				}
+		};
+
+		template <>
+		struct IOHelper<ivec2>
+		{
+				template <typename T>
+				auto get(IOReadable<T> *interface, ivec2 &vec) const
+				{
+						return (interface->get(vec.v));
+				}
+
+				template <typename T>
+				auto put(IOWriteable<T> *interface, const ivec2 &vec) const
 				{
 						return (interface->put(vec.v));
 				}

@@ -48,4 +48,4 @@ target_sources(Octahedron
         ${CMAKE_CURRENT_LIST_DIR}/Octahedron.h
         ${CMAKE_CURRENT_LIST_DIR}/Tools/ProtectedPtr.h
         ${CMAKE_CURRENT_LIST_DIR}/Engine/Engine.cpp
- "Tools/Math.h" "Tools/StringLiteral.h" "Tools/Exception.h" "Engine/Engine.h" "Tools/ManagedResource.h" "IO/Logger.h" "IO/FileSystem.h" "IO/FileSystem.cpp" "Octahedron.cpp" "Base.h" "IO/IOStream.h" "IO/IOStream.cpp" "IO/FileStream.cpp" "IO/FileStream.h" "IO/IOInterface.h" "IO/GZFileStream.h" "IO/GZFileStream.cpp" "IO/RawFileStream.cpp" "IO/RawFileStream.h")
+ "Tools/Math.h" "Tools/StringLiteral.h" "Tools/Exception.h" "Engine/Engine.h" "Tools/ManagedResource.h" "IO/Logger.h" "IO/FileSystem.h" "IO/FileSystem.cpp" "Octahedron.cpp" "Base.h" "IO/IOStream.h" "IO/IOStream.cpp" "IO/FileStream.cpp" "IO/FileStream.h" "IO/IOInterface.h" "IO/GZFileStream.h" "IO/GZFileStream.cpp" "IO/RawFileStream.cpp" "IO/RawFileStream.h" "IO/DynamicBuffer.cpp"  "IO/Serializer.h")

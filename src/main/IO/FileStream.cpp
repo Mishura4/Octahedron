@@ -7,6 +7,8 @@
 #include <filesystem>
 #include <source_location>
 
+#include "../../../out/build/x64-Debug/dep/SDL/include/SDL_rwops.h"
+
 using namespace Octahedron;
 
 std::string FileStream::flagsToOpenMode(BitSet<OpenFlags> mode)
@@ -60,4 +62,20 @@ std::string FileStream::flagsToOpenMode(BitSet<OpenFlags> mode)
   if (mode & OpenFlags::BINARY)
     mode_.push_back('b');
   return (mode_);
+}
+
+auto FileStream::toRWops() -> ManagedResource<SDL_RWops*, RWopsCleaner>
+{
+  auto base = SeekableStream::toRWops();
+
+	base->hidden.unknown.data1 = this;
+	base->close = [](SDL_RWops * rw)
+	{
+		auto f = static_cast<FileStream *>(rw->hidden.unknown.data1);
+
+		f->flush();
+		SDL_FreeRW(rw);
+		return (0);
+	};
+	return (base);
 }

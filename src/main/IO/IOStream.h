@@ -72,8 +72,6 @@ namespace Octahedron
 
       virtual size_t read(std::span<std::byte> buf)        = 0;
       virtual size_t write(std::span<const std::byte> buf) = 0;
-
-      virtual bool flush() = 0;
   };
 
   class SeekableStream : public IOStream
@@ -89,7 +87,7 @@ namespace Octahedron
 
       virtual size_t size();
 
-      auto toRWops() -> ManagedResource<SDL_RWops *, RWopsCleaner>;
+      virtual auto toRWops() -> ManagedResource<SDL_RWops *, RWopsCleaner>;
 	};
 
 }  // namespace Octahedron

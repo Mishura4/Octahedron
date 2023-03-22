@@ -1425,31 +1425,185 @@ extern const char *addpackagedir(const char *dir);
 extern const char *findfile(const char *filename, const char *mode);
 extern bool findzipfile(const char *filename);
 extern stream *openzipfile(const char *filename, const char *mode);
-extern stream *opengzfile(const char *filename, const char *mode, stream *file = NULL, int level = Z_BEST_COMPRESSION);
 extern stream *openutf8file(const char *filename, const char *mode, stream *file = NULL);
 extern char *loadfile(const char *fn, size_t *size, bool utf8 = true);
 extern bool listdir(const char *dir, bool rel, const char *ext, vector<char *> &files);
 extern int listfiles(const char *dir, const char *ext, vector<char *> &files);
 extern int listzipfiles(const char *dir, const char *ext, vector<char *> &files);
 extern void seedMT(uint seed);
-extern uint randomMT();
+extern uint				 randomMT();
 
-extern void putint(ucharbuf &p, int n);
-extern void putint(packetbuf &p, int n);
-extern void putint(vector<uchar> &p, int n);
-extern int getint(ucharbuf &p);
-extern void putuint(ucharbuf &p, int n);
-extern void putuint(packetbuf &p, int n);
-extern void putuint(vector<uchar> &p, int n);
-extern int getuint(ucharbuf &p);
-extern void putfloat(ucharbuf &p, float f);
-extern void putfloat(packetbuf &p, float f);
-extern void putfloat(vector<uchar> &p, float f);
-extern float getfloat(ucharbuf &p);
-extern void sendstring(const char *t, ucharbuf &p);
-extern void sendstring(const char *t, packetbuf &p);
-extern void sendstring(const char *t, vector<uchar> &p);
-extern void getstring(char *t, ucharbuf &p, size_t len);
+// merely to ensure implicit conversion to uchar for the purpose of Octahedron serializers
+template <typename U>
+requires(std::is_arithmetic_v<U>)
+constexpr auto bufput = []<typename T>(T &p, U c) -> void { p.put(c); };
+
+template <typename U>
+requires(std::is_arithmetic_v<U>)
+constexpr auto bufget = []<typename T>(T &p) -> U
+{
+	if constexpr (requires(T &t, U &c) { t.get(c); })
+	{
+		U c;
+
+		p.get(c);
+		return (c);
+	}
+	else if constexpr (requires(T &t) {
+		{
+			t.template get<U>()
+		} -> std::same_as<U>;
+	})
+		return (p.template get<U>());
+	else
+		return (p.get());
+};
+
+template <typename T>
+void putint(T &p, int n)
+{
+	if (n < 128 && n > -127)
+		bufput<uchar>(p, n);
+	else if (n < 0x8000 && n >= -0x8000)
+	{
+		bufput<uchar>(p, 0x80);
+		bufput<uchar>(p, n);
+		bufput<uchar>(p, n >> 8);
+	}
+	else
+	{
+		bufput<uchar>(p, 0x81);
+		bufput<uchar>(p, n);
+		bufput<uchar>(p, n >> 8);
+		bufput<uchar>(p, n >> 16);
+		bufput<uchar>(p, n >> 24);
+	}
+}
+
+template <typename T>
+int getint(T &p)
+{
+	int c = (schar)bufget<uchar>(p);
+	if (c == -128)
+	{
+		int n = bufget<uchar>(p);
+		n |= ((schar)bufget<uchar>(p)) << 8;
+		return n;
+	}
+	else if (c == -127)
+	{
+		int n = bufget<uchar>(p);
+		n |= bufget<uchar>(p) << 8;
+		n |= bufget<uchar>(p) << 16;
+		return n | (bufget<uchar>(p) << 24);
+	}
+	else
+		return c;
+}
+
+// much smaller encoding for unsigned integers up to 28 bits, but can handle signed
+template <class T>
+void putuint(T &p, int n)
+{
+	if (n < 0 || n >= (1 << 21))
+	{
+		bufput<uchar>(p, 0x80 | (n & 0x7F));
+		bufput<uchar>(p, 0x80 | ((n >> 7) & 0x7F));
+		bufput<uchar>(p, 0x80 | ((n >> 14) & 0x7F));
+		bufput<uchar>(p, n >> 21);
+	}
+	else if (n < (1 << 7))
+		bufput<uchar>(p, n);
+	else if (n < (1 << 14))
+	{
+		bufput<uchar>(p, 0x80 | (n & 0x7F));
+		bufput<uchar>(p, n >> 7);
+	}
+	else
+	{
+		bufput<uchar>(p, 0x80 | (n & 0x7F));
+		bufput<uchar>(p, 0x80 | ((n >> 7) & 0x7F));
+		bufput<uchar>(p, n >> 14);
+	}
+}
+
+template <typename T>
+int getuint(T &p)
+{
+	int n = bufget<uchar>(p);
+	if (n & 0x80)
+	{
+		n += (bufget<uchar>(p) << 7) - 0x80;
+		if (n & (1 << 14))
+				n += (bufget<uchar>(p) << 14) - (1 << 14);
+		if (n & (1 << 21))
+				n += (bufget<uchar>(p) << 21) - (1 << 21);
+		if (n & (1 << 28))
+			n |= ~0U << 28;
+	}
+	return n;
+}
+
+#include "IO/IOInterface.h"
+
+template <class T>
+void putfloat(T &p, float f)
+{
+		if constexpr (requires(T &t) { p.template put<Octahedron::Endianness::LITTLE>(float()); })
+		p.template put<Octahedron::Endianness::LITTLE>(f);
+		else
+		{
+			lilswap(&f, 1);
+			p.put((uchar *)&f, sizeof(float));
+		}
+}
+
+template <class T>
+float getfloat(T &p)
+{
+		if constexpr (requires(T &t, float &f) { p.template get<Octahedron::Endianness::LITTLE>(f); })
+		{
+		float f;
+		p.template get<Octahedron::Endianness::LITTLE>(f);
+			return (f);
+		}
+		else
+		{
+		float f;
+		p.get((uchar *)&f, sizeof(float));
+		return lilswap(f);
+		}
+}
+
+template <class T>
+void sendstring(const char *t, T &p)
+{
+		while (*t)
+		putint(p, *t++);
+		putint(p, 0);
+}
+
+template <class T>
+void getstring(char *text, T &p, size_t len)
+{
+		char *t = text;
+		do
+		{
+		if (t >= &text[len])
+		{
+				text[len - 1] = 0;
+				return;
+		}
+		if (!p.remaining())
+		{
+				*t = 0;
+				return;
+		}
+		*t = getint(p);
+		}
+		while (*t++);
+}
+
 template<size_t N> static inline void getstring(char (&t)[N], ucharbuf &p) { getstring(t, p, N); }
 extern void filtertext(char *dst, const char *src, bool whitespace, bool forcespace, size_t len);
 template<size_t N> static inline void filtertext(char (&dst)[N], const char *src, bool whitespace = true, bool forcespace = false) { filtertext(dst, src, whitespace, forcespace, N-1); }

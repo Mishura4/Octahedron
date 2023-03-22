@@ -38,7 +38,7 @@ static void fixent(entity &e, int version)
 
 static bool loadmapheader(FileStream *f, const char *ogzname, mapheader &hdr, octaheader &ohdr)
 {
-    if(auto ret = f->get(hdr.magic, hdr.version, hdr.headersize); !ret)
+		if (auto ret = f->getAll(hdr.magic, hdr.version, hdr.headersize); !ret)
     {
 	    Octahedron::log(LogLevel::ERROR, "map {} has malformatted header", ogzname);
 			Octahedron::log(LogLevel::ERROR | LogLevel::DEBUG, "(expected to read {} bytes, got {})", ret.expected_size, ret.value);
@@ -51,7 +51,7 @@ static bool loadmapheader(FileStream *f, const char *ogzname, mapheader &hdr, oc
 	        Octahedron::log(LogLevel::ERROR, "map {} requires a newer version of Tesseract", ogzname);
         	return false;
         }
-        if(auto ret = f->get(hdr.worldsize, hdr.numents, hdr.numpvs, hdr.blendmap, hdr.numvars, hdr.numvslots); !ret)
+        if(auto ret = f->getAll(hdr.worldsize, hdr.numents, hdr.numpvs, hdr.blendmap, hdr.numvars, hdr.numvslots); !ret)
         {
 	        Octahedron::log(LogLevel::ERROR, "map {} has malformatted header", ogzname);
 					Octahedron::log(LogLevel::ERROR | LogLevel::DEBUG, "(expected to read {} bytes, got {})", ret.expected_size, ret.value);
@@ -73,7 +73,15 @@ static bool loadmapheader(FileStream *f, const char *ogzname, mapheader &hdr, oc
 						ogzname);
 					return false;
 				}
-				if (auto ret = f->get(ohdr.worldsize, ohdr.numents, ohdr.numpvs, ohdr.lightmaps, ohdr.blendmap, ohdr.numvars, ohdr.numvslots); !ret)
+				if (auto ret = f->getAll(
+							ohdr.worldsize,
+							ohdr.numents,
+							ohdr.numpvs,
+							ohdr.lightmaps,
+							ohdr.blendmap,
+							ohdr.numvars,
+							ohdr.numvslots);
+						!ret)
 				{
 					Octahedron::log(LogLevel::ERROR, "map {} has malformatted header", ogzname);
 					Octahedron::log(LogLevel::ERROR | LogLevel::DEBUG, "(expected to read {} bytes, got {})", ret.expected_size, ret.value);

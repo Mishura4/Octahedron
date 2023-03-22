@@ -38,7 +38,6 @@ namespace
     {
       SeekableStream *f = static_cast<SeekableStream *>(rw->hidden.unknown.data1);
 
-      f->flush();
       SDL_FreeRW(rw);
       return (0);
     }
