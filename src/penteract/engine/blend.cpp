@@ -1090,7 +1090,7 @@ void renderblendbrush()
     renderblendbrush(brush->tex, x1, y1, x2 - x1, y2 - y1);
 }
 
-bool loadblendmap(Octahedron::FileStream *f, uchar &type, BlendMapNode &node)
+bool loadblendmap(octahedron::file_stream *f, uchar &type, BlendMapNode &node)
 {
     type = f->get<char>();
     switch(type)
@@ -1124,13 +1124,13 @@ bool loadblendmap(Octahedron::FileStream *f, uchar &type, BlendMapNode &node)
     return true;
 }
 
-bool loadblendmap(Octahedron::FileStream *f, int info)
+bool loadblendmap(octahedron::file_stream *f, int info)
 {
     resetblendmap();
     return loadblendmap(f, blendmap.type, blendmap);
 }
 
-void saveblendmap(Octahedron::FileStream *f, uchar type, BlendMapNode &node)
+void saveblendmap(octahedron::file_stream *f, uchar type, BlendMapNode &node)
 {
 		f->put(type);
     switch(type)
@@ -1149,7 +1149,7 @@ void saveblendmap(Octahedron::FileStream *f, uchar type, BlendMapNode &node)
     }
 }
 
-void saveblendmap(Octahedron::FileStream *f)
+void saveblendmap(octahedron::file_stream *f)
 {
     saveblendmap(f, blendmap.type, blendmap);
 }

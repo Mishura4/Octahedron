@@ -3146,7 +3146,7 @@ bool execfile(const char *cfgfile, bool msg)
     }
     const char *oldsourcefile = sourcefile, *oldsourcestr = sourcestr;
     sourcefile = cfgfile;
-    Octahedron::log(Octahedron::LogLevel::TRACE, "executing {}", cfgfile);
+    octahedron::log(octahedron::log_level::TRACE, "executing {}", cfgfile);
     sourcestr = buf;
     execute(buf);
     sourcefile = oldsourcefile;
@@ -3989,7 +3989,7 @@ void findfile_(char *name)
 #ifndef STANDALONE
     findzipfile(fname) ||
 #endif
-      g_engine->fileSystem().isAccessible(name) ? 1 : 0
+      g_engine->get_file_system().is_accessible(name) ? 1 : 0
   );
 }
 COMMANDN(findfile, findfile_, "s");

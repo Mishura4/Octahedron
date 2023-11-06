@@ -1,6 +1,6 @@
 #include "engine.h"
 
-#include "IO/Serializer.h"
+#include "io/serializer.h"
 
 extern int outline;
 
@@ -890,7 +890,7 @@ vector<editinfo *> editinfos;
 editinfo *localedit = NULL;
 
 template <typename T>
-static void packcube(cube &c, Octahedron::IOWriteable<T> &buf)
+static void packcube(cube &c, octahedron::io_write_interface<T> &buf)
 {
     if(c.children)
     {
@@ -908,7 +908,7 @@ static void packcube(cube &c, Octahedron::IOWriteable<T> &buf)
 }
 
 template <typename T>
-static bool packblock(block3 &b, Octahedron::IOWriteable<T> &buf)
+static bool packblock(block3 &b, octahedron::io_write_interface<T> &buf)
 {
     if(b.size() <= 0 || b.size() > (1<<20)) return false;
     block3 hdr = b;
@@ -925,7 +925,7 @@ struct vslothdr
 };
 
 template <typename T>
-static void packvslots(cube &c, Octahedron::IOWriteable<T> &buf, vector<ushort> &used)
+static void packvslots(cube &c, octahedron::io_write_interface<T> &buf, vector<ushort> &used)
 {
     if(c.children)
     {
@@ -948,7 +948,7 @@ static void packvslots(cube &c, Octahedron::IOWriteable<T> &buf, vector<ushort> 
 }
 
 template <typename T>
-static void packvslots(block3 &b, Octahedron::IOWriteable<T> &buf)
+static void packvslots(block3 &b, octahedron::io_write_interface<T> &buf)
 {
     vector<ushort> used;
     cube *c = b.c();
@@ -957,7 +957,7 @@ static void packvslots(block3 &b, Octahedron::IOWriteable<T> &buf)
 }
 
 template<class B>
-static void unpackcube(cube &c, Octahedron::IOInterface<B> &buf)
+static void unpackcube(cube &c, octahedron::io_interface<B> &buf)
 {
     int mat = buf.get();
     if(mat == 0xFF)
@@ -974,7 +974,7 @@ static void unpackcube(cube &c, Octahedron::IOInterface<B> &buf)
 }
 
 template<class B>
-static bool unpackblock(block3 *&b, Octahedron::IOInterface<B> &buf)
+static bool unpackblock(block3 *&b, octahedron::io_interface<B> &buf)
 {
     if(b) { freeblock(b); b = NULL; }
     block3 hdr;
@@ -1000,7 +1000,7 @@ struct vslotmap
 static vector<vslotmap> unpackingvslots;
 
 template <typename T>
-static void unpackvslots(cube &c, Octahedron::IOInterface<T> &buf)
+static void unpackvslots(cube &c, octahedron::io_interface<T> &buf)
 {
     if(c.children)
     {
@@ -1014,9 +1014,9 @@ static void unpackvslots(cube &c, Octahedron::IOInterface<T> &buf)
 }
 
 template <typename T>
-static void unpackvslots(block3 &b, Octahedron::Serializer<T> &buf)
+static void unpackvslots(block3 &b, octahedron::serializer<T> &buf)
 {
-    while(buf.bytesAvailable() >= int(sizeof(vslothdr)))
+    while(buf.bytes_available() >= int(sizeof(vslothdr)))
     {
     	  vslothdr hdr;
 				buf.get(hdr);
@@ -1067,7 +1067,7 @@ static bool uncompresseditinfo(const uchar *inbuf, int inlen, uchar *&outbuf, in
 
 bool packeditinfo(editinfo *e, int &inlen, uchar *&outbuf, int &outlen)
 {
-	  Octahedron::DynamicBuffer buf;
+	  octahedron::dynamic_buffer buf;
     if(!e || !e->copy || !packblock(*e->copy, buf)) return false;
     packvslots(*e->copy, buf);
     inlen = buf.size();
@@ -1079,7 +1079,7 @@ bool unpackeditinfo(editinfo *&e, const uchar *inbuf, int inlen, int outlen)
     if(e && e->copy) { freeblock(e->copy); e->copy = NULL; }
     uchar *outbuf = NULL;
     if(!uncompresseditinfo(inbuf, inlen, outbuf, outlen)) return false;
-		Octahedron::Serializer buf{outbuf, size_t(outlen)};
+		octahedron::serializer buf{outbuf, size_t(outlen)};
     if(!e) e = editinfos.add(new editinfo);
     if(!unpackblock(e->copy, buf))
     {
@@ -1102,7 +1102,7 @@ void freeeditinfo(editinfo *&e)
 
 bool packundo(undoblock *u, int &inlen, uchar *&outbuf, int &outlen)
 {
-    Octahedron::DynamicBuffer buf;
+    octahedron::dynamic_buffer buf;
 
     buf.reserve(512);
     buf.put<ushort>(u->numents);
@@ -1130,8 +1130,8 @@ bool unpackundo(const uchar *inbuf, int inlen, int outlen)
 {
     uchar *outbuf = NULL;
     if(!uncompresseditinfo(inbuf, inlen, outbuf, outlen)) return false;
-    Octahedron::Serializer buf(outbuf, size_t(outlen));
-    if(buf.bytesAvailable() < 2)
+    octahedron::serializer buf(outbuf, size_t(outlen));
+    if(buf.bytes_available() < 2)
     {
         delete[] outbuf;
         return false;
@@ -1139,7 +1139,7 @@ bool unpackundo(const uchar *inbuf, int inlen, int outlen)
 		int numents = buf.get<ushort>();
     if(numents)
     {
-				if (buf.bytesAvailable() < numents * int(2 + sizeof(entity)))
+				if (buf.bytes_available() < numents * int(2 + sizeof(entity)))
         {
             delete[] outbuf;
             return false;
@@ -1154,7 +1154,7 @@ bool unpackundo(const uchar *inbuf, int inlen, int outlen)
     else
     {
         block3 *b = NULL;
-        if(!unpackblock(b, buf) || b->grid >= worldsize || buf.bytesAvailable() < b->size())
+        if(!unpackblock(b, buf) || b->grid >= worldsize || buf.bytes_available() < b->size())
         {
             freeblock(b);
             delete[] outbuf;
@@ -1226,7 +1226,7 @@ COMMAND(delprefab, "s");
 
 void saveprefab(char *name)
 {
-	  using Octahedron::OpenFlags;
+	  using octahedron::open_flags;
 
     if(!name[0] || noedit(true) || (nompedit && multiplayer())) return;
     prefab *b = prefabs.access(name);
@@ -1240,7 +1240,7 @@ void saveprefab(char *name)
     changed(sel);
     defformatstring(filename, "media/prefab/%s.obr", name);
     path(filename);
-    auto f = g_engine->fileSystem().openGZ(filename, OpenFlags::BINARY | OpenFlags::OUTPUT);
+    auto f = g_engine->get_file_system().open_gz(filename, open_flags::BINARY | open_flags::OUTPUT);
     if(!f) { conoutf(CON_ERROR, "could not write prefab to %s", filename); return; }
     prefabheader hdr;
     memcpy(hdr.magic, "OEBR", 4);
@@ -1265,14 +1265,14 @@ void pasteblock(block3 &b, selinfo &sel, bool local)
 
 prefab *loadprefab(const char *name, bool msg = true)
 {
-	 using Octahedron::OpenFlags;
+	 using octahedron::open_flags;
 
    prefab *b = prefabs.access(name);
    if(b) return b;
 
    defformatstring(filename, "media/prefab/%s.obr", name);
 	 path(filename);
-	 auto		 f = g_engine->fileSystem().openGZ(filename, OpenFlags::BINARY | OpenFlags::INPUT);
+	 auto		 f = g_engine->get_file_system().open_gz(filename, open_flags::BINARY | open_flags::INPUT);
    if(!f) { if(msg) conoutf(CON_ERROR, "could not read prefab %s", filename); return NULL; }
    prefabheader hdr;
 	 if (!f->get(hdr) || memcmp(hdr.magic, "OEBR", 4))
@@ -2212,7 +2212,7 @@ void mpeditvslot(int delta, VSlot &ds, int allfaces, selinfo &sel, bool local)
     }
 }
 
-bool mpeditvslot(int delta, int allfaces, selinfo &sel, Octahedron::ucharbuf &buf)
+bool mpeditvslot(int delta, int allfaces, selinfo &sel, octahedron::ucharbuf &buf)
 {
     VSlot ds;
     if(!unpackvslot(buf, ds, delta != 0)) return false;
@@ -2434,7 +2434,7 @@ void mpedittex(int tex, int allfaces, selinfo &sel, bool local)
     loopselxyz(edittexcube(c, tex, allfaces ? -1 : sel.orient, findrep));
 }
 
-static int unpacktex(int &tex, Octahedron::ucharbuf &buf, bool insert = true)
+static int unpacktex(int &tex, octahedron::ucharbuf &buf, bool insert = true)
 {
     if(tex < 0x10000) return true;
     VSlot ds;
@@ -2457,7 +2457,7 @@ int shouldpacktex(int index)
     return 0;
 }
 
-bool mpedittex(int tex, int allfaces, selinfo &sel, Octahedron::ucharbuf &buf)
+bool mpedittex(int tex, int allfaces, selinfo &sel, octahedron::ucharbuf &buf)
 {
     if(!unpacktex(tex, buf)) return false;
     mpedittex(tex, allfaces, sel, false);
@@ -2614,7 +2614,7 @@ void mpreplacetex(int oldtex, int newtex, bool insel, selinfo &sel, bool local)
     allchanged();
 }
 
-bool mpreplacetex(int oldtex, int newtex, bool insel, selinfo &sel, Octahedron::ucharbuf &buf)
+bool mpreplacetex(int oldtex, int newtex, bool insel, selinfo &sel, octahedron::ucharbuf &buf)
 {
     if(!unpacktex(oldtex, buf, false)) return false;
     editingvslot(oldtex);

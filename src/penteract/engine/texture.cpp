@@ -3,7 +3,7 @@
 #include "engine.h"
 #include "SDL_image.h"
 
-#include "../../main/IO/Serializer.h"
+#include "../../main/io/serializer.h"
 
 #ifndef SDL_IMAGE_VERSION_ATLEAST
 #define SDL_IMAGE_VERSION_ATLEAST(X, Y, Z) \
@@ -1509,7 +1509,7 @@ void texblur(ImageData &s, int n, int r)
 
 bool canloadsurface(const char *name)
 {
-    auto f = g_engine->fileSystem().open(name, Octahedron::OpenFlags::INPUT | Octahedron::OpenFlags::BINARY);
+    auto f = g_engine->get_file_system().open(name, octahedron::open_flags::INPUT | octahedron::open_flags::BINARY);
     if(!f) return false;
     return true;
 }
@@ -1532,7 +1532,7 @@ SDL_Surface *loadsurface(const char *name)
     }
     if (!s)
     {
-        if (auto rw = g_engine->fileSystem().openSDLRWops(name); rw)
+        if (auto rw = g_engine->get_file_system().openSDLRWops(name); rw)
             s = IMG_Load_RW(rw, 1); /*findfile(name, "rb")*/
     }
     return fixsurfaceformat(s);
@@ -2120,11 +2120,11 @@ static bool comparevslot(const VSlot &dst, const VSlot &src, int diff)
     return true;
 }
 
-bool unpackvslot(Octahedron::Serializer<std::span<uchar>> &buf, VSlot & dst, bool delta)
+bool unpackvslot(octahedron::serializer<std::span<uchar>> &buf, VSlot & dst, bool delta)
 {
 	  try
 	  {
-			while(buf.bytesAvailable())
+			while(buf.bytes_available())
 			{
 				int changed = buf.get();
 				if(changed >= 0x80) break;
@@ -2191,7 +2191,7 @@ bool unpackvslot(Octahedron::Serializer<std::span<uchar>> &buf, VSlot & dst, boo
 		}
 		catch (const std::runtime_error &e)
 		{
-			Octahedron::log(Octahedron::LogLevel::ERROR, "failed to retrieve vslots: {}", e.what());
+			octahedron::log(octahedron::log_level::ERROR, "failed to retrieve vslots: {}", e.what());
 		}
     //if(buf.overread()) return false;
     return true;
@@ -3304,13 +3304,13 @@ struct DDSURFACEDESC2
 };
 
 template <>
-struct Octahedron::IOHelper<DDPIXELFORMAT>
+struct octahedron::io_helper<DDPIXELFORMAT>
 {
     template <typename T>
     requires(readable<T>)
-		auto get(IOReadable<T> *self, DDPIXELFORMAT &obj) const
+		auto get(io_read_interface<T> *self, DDPIXELFORMAT &obj) const
     {
-            return (self->template getAll<Endianness::LITTLE>(
+            return (self->template getAll<endianness::little>(
               obj.dwSize,
               obj.dwFlags,
               obj.dwFourCC,
@@ -3324,9 +3324,9 @@ struct Octahedron::IOHelper<DDPIXELFORMAT>
 
     template <typename T>
     requires(writeable<T>)
-    auto put(IOWriteable<T> *self, const DDPIXELFORMAT &obj) const
+    auto put(io_write_interface<T> *self, const DDPIXELFORMAT &obj) const
     {
-            return (self->template putAll<Endianness::LITTLE>(
+            return (self->template put_all<endianness::little>(
               obj.dwSize,
               obj.dwFlags,
               obj.dwFourCC,
@@ -3340,13 +3340,13 @@ struct Octahedron::IOHelper<DDPIXELFORMAT>
 };
 
 template <>
-struct Octahedron::IOHelper<DDSURFACEDESC2>
+struct octahedron::io_helper<DDSURFACEDESC2>
 {
     template <typename T>
     requires(readable<T>)
-		auto get(IOReadable<T> *self, DDSURFACEDESC2 &obj) const
+		auto get(io_read_interface<T> *self, DDSURFACEDESC2 &obj) const
     {
-        return (self->template getAll<Endianness::LITTLE>(
+        return (self->template getAll<endianness::little>(
           obj.dwSize,
           obj.dwFlags,
           obj.dwHeight,
@@ -3365,9 +3365,9 @@ struct Octahedron::IOHelper<DDSURFACEDESC2>
 
     template <typename T>
     requires(writeable<T>)
-		io_result put(IOWriteable<T> *self, const DDSURFACEDESC2 &obj) const
+		io_result put(io_write_interface<T> *self, const DDSURFACEDESC2 &obj) const
     {
-        return (self->template putAll<Endianness::LITTLE>(
+        return (self->template put_all<endianness::little>(
           obj.dwSize,
           obj.dwFlags,
           obj.dwHeight,
@@ -3528,9 +3528,9 @@ DECODEDDS(decodergtc2, 2,
 
 bool loaddds(const char *filename, ImageData &image, int force)
 {
-    auto f = g_engine->fileSystem().open(
+    auto f = g_engine->get_file_system().open(
       filename,
-      Octahedron::OpenFlags::INPUT | Octahedron::OpenFlags::BINARY
+      octahedron::open_flags::INPUT | octahedron::open_flags::BINARY
     );
     if(!f)
       return false;
@@ -3658,9 +3658,9 @@ void gendds(char *infile, char *outfile)
         else concatstring(buf, ".dds");
         outfile = buf;
     }
-    auto f = g_engine->fileSystem().open(
+    auto f = g_engine->get_file_system().open(
       outfile,
-      Octahedron::OpenFlags::OUTPUT | Octahedron::OpenFlags::BINARY
+      octahedron::open_flags::OUTPUT | octahedron::open_flags::BINARY
     );
 
     if(!f) { conoutf(CON_ERROR, "failed writing to %s", outfile); return; }
@@ -3712,16 +3712,16 @@ void gendds(char *infile, char *outfile)
 }
 COMMAND(gendds, "ss");
 
-void writepngchunk(Octahedron::FileStream *f, const char *type, uchar *data = NULL, uint len = 0)
+void writepngchunk(octahedron::file_stream *f, const char *type, uchar *data = NULL, uint len = 0)
 {
-    f->put<Octahedron::Endianness::BIG, uint>(len);
+    f->put<octahedron::endianness::big, uint>(len);
     f->write(type, 4);
     f->write(data, len);
 
     uint crc = crc32(0, Z_NULL, 0);
     crc = crc32(crc, (const Bytef *)type, 4);
     if(data) crc = crc32(crc, data, len);
-    f->put<Octahedron::Endianness::BIG, uint>(crc);
+    f->put<octahedron::endianness::big, uint>(crc);
 }
 
 VARP(compresspng, 0, 9, 9);
@@ -3737,24 +3737,24 @@ void savepng(const char *filename, ImageData &image, bool flip)
         case 4: ctype = 6; break;
         default: conoutf(CON_ERROR, "failed saving png to %s", filename); return;
     }
-    auto f = g_engine->fileSystem().open(
+    auto f = g_engine->get_file_system().open(
       filename,
-      Octahedron::OpenFlags::OUTPUT | Octahedron::OpenFlags::BINARY
+      octahedron::open_flags::OUTPUT | octahedron::open_flags::BINARY
     );
     if(!f) { conoutf(CON_ERROR, "could not write to %s", filename); return; }
 
     uchar signature[] = { 137, 80, 78, 71, 13, 10, 26, 10 };
     f->put(signature);
 
-    using Endian = Octahedron::Endianness;
+    using Endian = octahedron::endianness;
 
     struct pngihdr
     {
         uint width, height;
         uchar bitdepth, colortype, compress, filter, interlace;
     } ihdr = {
-      Octahedron::byteswap<Endian::BIG>(uint(image.w)),
-      Octahedron::byteswap<Endian::BIG>(uint(image.h)),
+      octahedron::byteswap<Endian::big>(uint(image.w)),
+      octahedron::byteswap<Endian::big>(uint(image.h)),
       8,
       ctype,
       0,
@@ -3814,9 +3814,9 @@ void savepng(const char *filename, ImageData &image, bool flip)
     deflateEnd(&z);
 
     f->seek(idat, SEEK_SET);
-    f->put<Endian::BIG, uint>(len);
+    f->put<Endian::big, uint>(len);
     f->seek(0, SEEK_END);
-    f->put<Endian::BIG, uint>(crc);
+    f->put<Endian::big, uint>(crc);
 
     writepngchunk(f.get(), "IEND");
 
@@ -3856,9 +3856,9 @@ void savetga(const char *filename, ImageData &image, bool flip)
         default: conoutf(CON_ERROR, "failed saving tga to %s", filename); return;
     }
 
-    auto f = g_engine->fileSystem().open(
+    auto f = g_engine->get_file_system().open(
       filename,
-      Octahedron::OpenFlags::OUTPUT | Octahedron::OpenFlags::BINARY
+      octahedron::open_flags::OUTPUT | octahedron::open_flags::BINARY
     );
     if(!f) { conoutf(CON_ERROR, "could not write to %s", filename); return; }
 
@@ -3962,9 +3962,9 @@ void saveimage(const char *filename, int format, ImageData &image, bool flip = f
             if (!s)
                 break;
 
-            auto f = g_engine->fileSystem().open(
+            auto f = g_engine->get_file_system().open(
               filename,
-              Octahedron::OpenFlags::OUTPUT | Octahedron::OpenFlags::BINARY
+              octahedron::open_flags::OUTPUT | octahedron::open_flags::BINARY
             );
             if(f)
             {
@@ -4006,7 +4006,7 @@ void screenshot(char *filename)
         copystring(buf, screenshotdir);
         dirlen = strlen(buf);
         if(buf[dirlen] != '/' && buf[dirlen] != '\\' && dirlen+1 < (int)sizeof(buf)) { buf[dirlen++] = '/'; buf[dirlen] = '\0'; }
-        g_engine->fileSystem().createPath(buf);
+        g_engine->get_file_system().create_folders(buf);
     }
     if(filename[0])
     {

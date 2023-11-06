@@ -1,4 +1,4 @@
-#include "IO/FileStream.h"
+#include "io/file_stream.h"
 
 struct md2;
 
@@ -129,9 +129,9 @@ struct md2 : vertloader<md2>
 
         bool load(const char *filename, float smooth)
         {
-          using enum Octahedron::OpenFlags;
+          using enum octahedron::open_flags;
 
-            auto file = Octahedron::FileSystem().open(filename, INPUT | BINARY);
+            auto file = octahedron::file_system().open(filename, INPUT | BINARY);
             if (!file)
                 return false;
 

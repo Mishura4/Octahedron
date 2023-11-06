@@ -1,4 +1,4 @@
-#include "IO/FileStream.h"
+#include "io/file_stream.h"
 
 struct md3;
 
@@ -58,9 +58,9 @@ struct md3 : vertloader<md3>
     {
         bool load(const char *path, float smooth)
         {
-          using enum Octahedron::OpenFlags;
+          using enum octahedron::open_flags;
 
-          auto f = Octahedron::FileSystem().open(path, INPUT | BINARY);
+          auto f = octahedron::file_system().open(path, INPUT | BINARY);
           if (!f)
             return false;
 

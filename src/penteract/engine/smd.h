@@ -44,9 +44,9 @@ struct smd : skelloader<smd>
             return false;
         }
 
-        void skipsection(Octahedron::FileStream *f, std::optional<std::string> &line)
+        void skipsection(octahedron::file_stream *f, std::optional<std::string> &line)
         {
-            while(line = f->getLine(2048))
+            while(line = f->get_next_line(2048))
             {
                 const char *curbuf = line->c_str();
                 if(skipcomment(curbuf)) continue;
@@ -70,9 +70,9 @@ struct smd : skelloader<smd>
             *curname = '\0';
         }
 
-        void readnodes(Octahedron::FileStream *f, std::optional<std::string> &line, vector<smdbone> &bones)
+        void readnodes(octahedron::file_stream *f, std::optional<std::string> &line, vector<smdbone> &bones)
         {
-            while(line = f->getLine(2048))
+            while(line = f->get_next_line(2048))
             {
                 const char *curbuf = line->c_str();
                 if(skipcomment(curbuf)) continue;
@@ -145,7 +145,7 @@ struct smd : skelloader<smd>
             smdvertkey(smdmeshdata *mesh) : mesh(mesh) {}
         };
 
-        void readtriangles(Octahedron::FileStream *f, std::optional<std::string> &line)
+        void readtriangles(octahedron::file_stream *f, std::optional<std::string> &line)
         {
             smdmeshdata *curmesh = NULL;
             hashtable<const char *, smdmeshdata> materials(1<<6);
@@ -153,7 +153,7 @@ struct smd : skelloader<smd>
             const char *buf;
             auto getline = [&]()
             {
-              line = f->getLine(2048);
+              line = f->get_next_line(2048);
               if (!line)
                 return (false);
               buf = line->c_str();
@@ -223,10 +223,10 @@ struct smd : skelloader<smd>
             enumerate(materials, smdmeshdata, data, data.finalize());
         }
 
-        void readskeleton(Octahedron::FileStream *f, std::optional<std::string> &line)
+        void readskeleton(octahedron::file_stream *f, std::optional<std::string> &line)
         {
             int frame = -1;
-            while(auto line = f->getLine(2048))
+            while(auto line = f->get_next_line(2048))
             {
                 const char *curbuf = line->c_str();
                 if(skipcomment(curbuf)) continue;
@@ -259,12 +259,12 @@ struct smd : skelloader<smd>
 
         bool loadmesh(const char *filename)
         {
-            auto f = g_engine->fileSystem().open(filename, Octahedron::OpenFlags::INPUT);
+            auto f = g_engine->get_file_system().open(filename, octahedron::open_flags::INPUT);
             if (!f)
                 return false;
 
             int version = -1;
-            while(auto line = f->getLine(2048))
+            while(auto line = f->get_next_line(2048))
             {
                 const char *buf = line->c_str();
                 const char *curbuf = line->c_str();
@@ -306,10 +306,10 @@ struct smd : skelloader<smd>
             return true;
         }
 
-        int readframes(Octahedron::FileStream *f, std::optional<std::string> &line, vector<smdbone> &bones, vector<dualquat> &animbones)
+        int readframes(octahedron::file_stream *f, std::optional<std::string> &line, vector<smdbone> &bones, vector<dualquat> &animbones)
         {
             int frame = -1, numframes = 0, lastbone = skel->numbones;
-            while(line = f->getLine(2048))
+            while(line = f->get_next_line(2048))
             {
                 const char *curbuf = line->c_str();
                 if(skipcomment(curbuf)) continue;
@@ -365,14 +365,14 @@ struct smd : skelloader<smd>
             skelanimspec *sa = skel->findskelanim(filename);
             if(sa || skel->numbones <= 0) return sa;
 
-            auto f = g_engine->fileSystem().open(filename, Octahedron::OpenFlags::INPUT);
+            auto f = g_engine->get_file_system().open(filename, octahedron::open_flags::INPUT);
             if (!f)
                 return nullptr;
 
             int version = -1;
             vector<smdbone> bones;
             vector<dualquat> animbones;
-            while(auto line = f->getLine(2048))
+            while(auto line = f->get_next_line(2048))
             {
                 const char *curbuf = line->c_str();
                 if (skipcomment(curbuf))

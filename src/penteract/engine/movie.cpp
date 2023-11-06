@@ -33,11 +33,11 @@ struct avisegmentinfo
 
 SVARP(moviedir, "movie");
 
-#include "IO/FileStream.h"
+#include "io/file_stream.h"
 
 struct aviwriter
 {
-    std::unique_ptr<Octahedron::FileStream> f;
+    std::unique_ptr<octahedron::file_stream> f;
     uchar *yuv;
     uint videoframes;
     size_t totalsize;
@@ -122,7 +122,7 @@ struct aviwriter
         if(!f) return;
         flushsegment();
 
-        using enum Octahedron::Endianness;
+        using enum octahedron::endianness;
 
         uint soundindexes = 0, videoindexes = 0, soundframes = 0, videoframes = 0, indexframes = 0;
         loopv(segments)
@@ -136,42 +136,42 @@ struct aviwriter
         }
         if(dbgmovie) conoutf(CON_DEBUG, "fileframes: sound=%d, video=%d+%d(dups)\n", soundframes, videoframes, indexframes-videoframes);
         f->seek(fileframesoffset, SEEK_SET);
-        f->put<LITTLE, uint>(segments[0].indexframes);
+        f->put<little, uint>(segments[0].indexframes);
         f->seek(filevideooffset, SEEK_SET);
-        f->put<LITTLE, uint>(segments[0].videoframes);
+        f->put<little, uint>(segments[0].videoframes);
         if(segments[0].soundframes > 0)
         {
             f->seek(filesoundoffset, SEEK_SET);
-            f->put<LITTLE, uint>(segments[0].soundframes);
+            f->put<little, uint>(segments[0].soundframes);
         }
         f->seek(fileextframesoffset, SEEK_SET);
-        f->put<LITTLE, uint>(indexframes); // total video frames
+        f->put<little, uint>(indexframes); // total video frames
 
         f->seek(superindexvideooffset + 2 + 2, SEEK_SET);
-        f->put<LITTLE, uint>(videoindexes);
+        f->put<little, uint>(videoindexes);
         f->seek(superindexvideooffset + 2 + 2 + 4 + 4 + 4 + 4 + 4, SEEK_SET);
         loopv(segments)
         {
             avisegmentinfo &seg = segments[i];
-            f->put<LITTLE, uint>(seg.videoindexoffset&stream::offset(0xFFFFFFFFU));
-            f->put<LITTLE, uint>(seg.videoindexoffset>>32);
-            f->put<LITTLE, uint>(seg.videoindexsize);
-            f->put<LITTLE, uint>(seg.indexframes);
+            f->put<little, uint>(seg.videoindexoffset&stream::offset(0xFFFFFFFFU));
+            f->put<little, uint>(seg.videoindexoffset>>32);
+            f->put<little, uint>(seg.videoindexsize);
+            f->put<little, uint>(seg.indexframes);
         }
 
         if(soundindexes > 0)
         {
             f->seek(superindexsoundoffset + 2 + 2, SEEK_SET);
-            f->put<LITTLE, uint>(soundindexes);
+            f->put<little, uint>(soundindexes);
             f->seek(superindexsoundoffset + 2 + 2 + 4 + 4 + 4 + 4 + 4, SEEK_SET);
             loopv(segments)
             {
                 avisegmentinfo &seg = segments[i];
                 if(!seg.soundindexsize) continue;
-                f->put<LITTLE, uint>(seg.soundindexoffset&stream::offset(0xFFFFFFFFU));
-                f->put<LITTLE, uint>(seg.soundindexoffset>>32);
-                f->put<LITTLE, uint>(seg.soundindexsize);
-                f->put<LITTLE, uint>(seg.soundframes);
+                f->put<little, uint>(seg.soundindexoffset&stream::offset(0xFFFFFFFFU));
+                f->put<little, uint>(seg.soundindexoffset>>32);
+                f->put<little, uint>(seg.soundindexsize);
+                f->put<little, uint>(seg.soundframes);
             }
         }
 
@@ -186,7 +186,7 @@ struct aviwriter
         {
             int dirlen = strlen(filename);
             if(filename[dirlen] != '/' && filename[dirlen] != '\\' && dirlen+1 < (int)sizeof(filename)) { filename[dirlen++] = '/'; filename[dirlen] = '\0'; }
-            g_engine->fileSystem().createPath(filename);
+            g_engine->get_file_system().create_folders(filename);
         }
 
         concatstring(filename, name);
@@ -220,16 +220,16 @@ struct aviwriter
 
     bool open()
     {
-        auto file = g_engine->fileSystem().open(
+        auto file = g_engine->get_file_system().open(
           filename,
-          Octahedron::OpenFlags::OUTPUT | Octahedron::OpenFlags::BINARY
+          octahedron::open_flags::OUTPUT | octahedron::open_flags::BINARY
         );
 
         if (!file)
             return false;
 
         f = std::move(file);
-        using enum Octahedron::Endianness;
+        using enum octahedron::endianness;
 
         chunkdepth = -1;
 
@@ -238,18 +238,18 @@ struct aviwriter
         listchunk("LIST", "hdrl");
 
         startchunk("avih", 56);
-        f->put<LITTLE, uint>(1000000 / videofps); // microsecsperframe
-        f->put<LITTLE, uint>(0); // maxbytespersec
-        f->put<LITTLE, uint>(0); // reserved
-        f->put<LITTLE, uint>(0x10 | 0x20); // flags - hasindex|mustuseindex
+        f->put<little, uint>(1000000 / videofps); // microsecsperframe
+        f->put<little, uint>(0); // maxbytespersec
+        f->put<little, uint>(0); // reserved
+        f->put<little, uint>(0x10 | 0x20); // flags - hasindex|mustuseindex
         fileframesoffset = f->tell();
-        f->put<LITTLE, uint>(0); // totalvideoframes
-        f->put<LITTLE, uint>(0); // initialframes
-        f->put<LITTLE, uint>(soundfrequency > 0 ? 2 : 1); // streams
-        f->put<LITTLE, uint>(0); // buffersize
-        f->put<LITTLE, uint>(videow); // video width
-        f->put<LITTLE, uint>(videoh); // video height
-        loopi(4) f->put<LITTLE, uint>(0); // reserved
+        f->put<little, uint>(0); // totalvideoframes
+        f->put<little, uint>(0); // initialframes
+        f->put<little, uint>(soundfrequency > 0 ? 2 : 1); // streams
+        f->put<little, uint>(0); // buffersize
+        f->put<little, uint>(videow); // video width
+        f->put<little, uint>(videoh); // video height
+        loopi(4) f->put<little, uint>(0); // reserved
         endchunk(); // avih
 
         listchunk("LIST", "strl");
@@ -257,76 +257,76 @@ struct aviwriter
         startchunk("strh", 56);
         f->write("vids", 4); // fcctype
         f->write("I420", 4); // fcchandler
-        f->put<LITTLE, uint>(0); // flags
-        f->put<LITTLE, uint>(0); // priority
-        f->put<LITTLE, uint>(0); // initialframes
-        f->put<LITTLE, uint>(1); // scale
-        f->put<LITTLE, uint>(videofps); // rate
-        f->put<LITTLE, uint>(0); // start
+        f->put<little, uint>(0); // flags
+        f->put<little, uint>(0); // priority
+        f->put<little, uint>(0); // initialframes
+        f->put<little, uint>(1); // scale
+        f->put<little, uint>(videofps); // rate
+        f->put<little, uint>(0); // start
         filevideooffset = f->tell();
-        f->put<LITTLE, uint>(0); // length
-        f->put<LITTLE, uint>(videow*videoh*3/2); // suggested buffersize
-        f->put<LITTLE, uint>(0); // quality
-        f->put<LITTLE, uint>(0); // samplesize
-        f->put<LITTLE, ushort>(0); // frame left
-        f->put<LITTLE, ushort>(0); // frame top
-        f->put<LITTLE, ushort>(videow); // frame right
-        f->put<LITTLE, ushort>(videoh); // frame bottom
+        f->put<little, uint>(0); // length
+        f->put<little, uint>(videow*videoh*3/2); // suggested buffersize
+        f->put<little, uint>(0); // quality
+        f->put<little, uint>(0); // samplesize
+        f->put<little, ushort>(0); // frame left
+        f->put<little, ushort>(0); // frame top
+        f->put<little, ushort>(videow); // frame right
+        f->put<little, ushort>(videoh); // frame bottom
         endchunk(); // strh
 
         startchunk("strf", 40);
-        f->put<LITTLE, uint>(40); //headersize
-        f->put<LITTLE, uint>(videow); // width
-        f->put<LITTLE, uint>(videoh); // height
-        f->put<LITTLE, ushort>(3); // planes
-        f->put<LITTLE, ushort>(12); // bitcount
+        f->put<little, uint>(40); //headersize
+        f->put<little, uint>(videow); // width
+        f->put<little, uint>(videoh); // height
+        f->put<little, ushort>(3); // planes
+        f->put<little, ushort>(12); // bitcount
         f->write("I420", 4); // compression
-        f->put<LITTLE, uint>(videow*videoh*3/2); // imagesize
-        f->put<LITTLE, uint>(0); // xres
-        f->put<LITTLE, uint>(0); // yres;
-        f->put<LITTLE, uint>(0); // colorsused
-        f->put<LITTLE, uint>(0); // colorsrequired
+        f->put<little, uint>(videow*videoh*3/2); // imagesize
+        f->put<little, uint>(0); // xres
+        f->put<little, uint>(0); // yres;
+        f->put<little, uint>(0); // colorsused
+        f->put<little, uint>(0); // colorsrequired
         endchunk(); // strf
 
         startchunk("indx", 24 + 16*MAX_SUPER_INDEX);
         superindexvideooffset = f->tell();
-        f->put<LITTLE, ushort>(4); // longs per entry
-        f->put<LITTLE, ushort>(0); // index of indexes
-        f->put<LITTLE, uint>(0); // entries in use
+        f->put<little, ushort>(4); // longs per entry
+        f->put<little, ushort>(0); // index of indexes
+        f->put<little, uint>(0); // entries in use
         f->write("00dc", 4); // chunk id
-        f->put<LITTLE, uint>(0); // reserved 1
-        f->put<LITTLE, uint>(0); // reserved 2
-        f->put<LITTLE, uint>(0); // reserved 3
+        f->put<little, uint>(0); // reserved 1
+        f->put<little, uint>(0); // reserved 2
+        f->put<little, uint>(0); // reserved 3
         loopi(MAX_SUPER_INDEX)
         {
-            f->put<LITTLE, uint>(0); // offset low
-            f->put<LITTLE, uint>(0); // offset high
-            f->put<LITTLE, uint>(0); // size
-            f->put<LITTLE, uint>(0); // duration
+            f->put<little, uint>(0); // offset low
+            f->put<little, uint>(0); // offset high
+            f->put<little, uint>(0); // size
+            f->put<little, uint>(0); // duration
         }
         endchunk(); // indx
 
         startchunk("vprp", 68);
-        f->put<LITTLE, uint>(0); // video format token
-        f->put<LITTLE, uint>(0); // video standard
-        f->put<LITTLE, uint>(videofps); // vertical refresh rate
-        f->put<LITTLE, uint>(videow); // horizontal total
-        f->put<LITTLE, uint>(videoh); // vertical total
+        f->put<little, uint>(0); // video format token
+        f->put<little, uint>(0); // video standard
+        f->put<little, uint>(videofps); // vertical refresh rate
+        f->put<little, uint>(videow); // horizontal total
+        f->put<little, uint>(videoh); // vertical total
         int gcd = screenw, rem = screenh;
         while(rem > 0) { gcd %= rem; swap(gcd, rem); }
-        f->put<LITTLE, ushort>(screenh/gcd); // aspect denominator
-        f->put<LITTLE, ushort>(screenw/gcd); // aspect numerator
-        f->put<LITTLE, uint>(videow); // frame width
-        f->put<LITTLE, uint>(videoh); // frame height
-        f->put<LITTLE, uint>(1); // fields per frame
-        f->put<LITTLE, uint>(videoh); // compressed bitmap height
-        f->put<LITTLE, uint>(videow); // compressed bitmap width
-        f->put<LITTLE, uint>(videoh); // valid bitmap height
-        f->put<LITTLE, uint>(videow); // valid bitmap width
-        f->put<LITTLE, uint>(0); // valid bitmap x offset
-        f->put<LITTLE, uint>(0); // valid bitmap y offset
-        f->put<LITTLE, uint>(0); // video x offset
-        f->put<LITTLE, uint>(0); // video y start
+        f->put<little, ushort>(screenh/gcd); // aspect denominator
+        f->put<little, ushort>(screenw/gcd); // aspect numerator
+        f->put<little, uint>(videow); // frame width
+        f->put<little, uint>(videoh); // frame height
+        f->put<little, uint>(1); // fields per frame
+        f->put<little, uint>(videoh); // compressed bitmap height
+        f->put<little, uint>(videow); // compressed bitmap width
+        f->put<little, uint>(videoh); // valid bitmap height
+        f->put<little, uint>(videow); // valid bitmap width
+        f->put<little, uint>(0); // valid bitmap x offset
+        f->put<little, uint>(0); // valid bitmap y offset
+        f->put<little, uint>(0); // video x offset
+        f->put<little, uint>(0); // video y start
         endchunk(); // vprp
 
         endlistchunk(); // LIST strl
@@ -339,49 +339,49 @@ struct aviwriter
 
             startchunk("strh", 56);
             f->write("auds", 4); // fcctype
-            f->put<LITTLE, uint>(1); // fcchandler - normally 4cc, but audio is a special case
-            f->put<LITTLE, uint>(0); // flags
-            f->put<LITTLE, uint>(0); // priority
-            f->put<LITTLE, uint>(0); // initialframes
-            f->put<LITTLE, uint>(1); // scale
-            f->put<LITTLE, uint>(soundfrequency); // rate
-            f->put<LITTLE, uint>(0); // start
+            f->put<little, uint>(1); // fcchandler - normally 4cc, but audio is a special case
+            f->put<little, uint>(0); // flags
+            f->put<little, uint>(0); // priority
+            f->put<little, uint>(0); // initialframes
+            f->put<little, uint>(1); // scale
+            f->put<little, uint>(soundfrequency); // rate
+            f->put<little, uint>(0); // start
             filesoundoffset = f->tell();
-            f->put<LITTLE, uint>(0); // length
-            f->put<LITTLE, uint>(soundfrequency*bps*soundchannels/2); // suggested buffer size (this is a half second)
-            f->put<LITTLE, uint>(0); // quality
-            f->put<LITTLE, uint>(bps*soundchannels); // samplesize
-            f->put<LITTLE, ushort>(0); // frame left
-            f->put<LITTLE, ushort>(0); // frame top
-            f->put<LITTLE, ushort>(0); // frame right
-            f->put<LITTLE, ushort>(0); // frame bottom
+            f->put<little, uint>(0); // length
+            f->put<little, uint>(soundfrequency*bps*soundchannels/2); // suggested buffer size (this is a half second)
+            f->put<little, uint>(0); // quality
+            f->put<little, uint>(bps*soundchannels); // samplesize
+            f->put<little, ushort>(0); // frame left
+            f->put<little, ushort>(0); // frame top
+            f->put<little, ushort>(0); // frame right
+            f->put<little, ushort>(0); // frame bottom
             endchunk(); // strh
 
             startchunk("strf", 18);
-            f->put<LITTLE, ushort>(1); // format (uncompressed PCM)
-            f->put<LITTLE, ushort>(soundchannels); // channels
-            f->put<LITTLE, uint>(soundfrequency); // sampleframes per second
-            f->put<LITTLE, uint>(soundfrequency*bps*soundchannels); // average bytes per second
-            f->put<LITTLE, ushort>(bps*soundchannels); // block align <-- guess
-            f->put<LITTLE, ushort>(bps*8); // bits per sample
-            f->put<LITTLE, ushort>(0); // size
+            f->put<little, ushort>(1); // format (uncompressed PCM)
+            f->put<little, ushort>(soundchannels); // channels
+            f->put<little, uint>(soundfrequency); // sampleframes per second
+            f->put<little, uint>(soundfrequency*bps*soundchannels); // average bytes per second
+            f->put<little, ushort>(bps*soundchannels); // block align <-- guess
+            f->put<little, ushort>(bps*8); // bits per sample
+            f->put<little, ushort>(0); // size
             endchunk(); //strf
 
             startchunk("indx", 24 + 16*MAX_SUPER_INDEX);
             superindexsoundoffset = f->tell();
-            f->put<LITTLE, ushort>(4); // longs per entry
-            f->put<LITTLE, ushort>(0); // index of indexes
-            f->put<LITTLE, uint>(0); // entries in use
+            f->put<little, ushort>(4); // longs per entry
+            f->put<little, ushort>(0); // index of indexes
+            f->put<little, uint>(0); // entries in use
             f->write("01wb", 4); // chunk id
-            f->put<LITTLE, uint>(0); // reserved 1
-            f->put<LITTLE, uint>(0); // reserved 2
-            f->put<LITTLE, uint>(0); // reserved 3
+            f->put<little, uint>(0); // reserved 1
+            f->put<little, uint>(0); // reserved 2
+            f->put<little, uint>(0); // reserved 3
             loopi(MAX_SUPER_INDEX)
             {
-                f->put<LITTLE, uint>(0); // offset low
-                f->put<LITTLE, uint>(0); // offset high
-                f->put<LITTLE, uint>(0); // size
-                f->put<LITTLE, uint>(0); // duration
+                f->put<little, uint>(0); // offset low
+                f->put<little, uint>(0); // offset high
+                f->put<little, uint>(0); // size
+                f->put<little, uint>(0); // duration
             }
             endchunk(); // indx
 
@@ -391,7 +391,7 @@ struct aviwriter
         listchunk("LIST", "odml");
         startchunk("dmlh", 4);
         fileextframesoffset = f->tell();
-        f->put<LITTLE, uint>(0);
+        f->put<little, uint>(0);
         endchunk(); // dmlh
         endlistchunk(); // LIST odml
 
@@ -646,7 +646,7 @@ struct aviwriter
 
     void flushsegment()
     {
-        using enum Octahedron::Endianness;
+        using enum octahedron::endianness;
 
         endlistchunk(); // LIST movi
 
@@ -673,9 +673,9 @@ struct aviwriter
                 aviindexentry &entry = index[i];
                 // printf("%3d %s %08x\n", i, (entry.type==1)?"s":"v", entry.offset);
                 f->write(entry.type ? "01wb" : "00dc", 4); // chunkid
-                f->put<LITTLE, uint>(0x10); // flags - KEYFRAME
-                f->put<LITTLE, uint>(entry.offset); // offset (relative to movi)
-                f->put<LITTLE, uint>(entry.size); // size
+                f->put<little, uint>(0x10); // flags - KEYFRAME
+                f->put<little, uint>(entry.offset); // offset (relative to movi)
+                f->put<little, uint>(entry.size); // size
             }
             endchunk();
         }
@@ -683,19 +683,19 @@ struct aviwriter
         seg.videoframes = videoframes;
         seg.videoindexoffset = totalsize;
         startchunk("ix00", 24 + indexframes*8);
-        f->put<LITTLE, ushort>(2); // longs per entry
-        f->put<LITTLE, ushort>(0x0100); // index of chunks
-        f->put<LITTLE, uint>(indexframes); // entries in use
+        f->put<little, ushort>(2); // longs per entry
+        f->put<little, ushort>(0x0100); // index of chunks
+        f->put<little, uint>(indexframes); // entries in use
         f->write("00dc", 4); // chunk id
-        f->put<LITTLE, uint>(seg.offset&stream::offset(0xFFFFFFFFU)); // offset low
-        f->put<LITTLE, uint>(seg.offset>>32); // offset high
-        f->put<LITTLE, uint>(0); // reserved 3
+        f->put<little, uint>(seg.offset&stream::offset(0xFFFFFFFFU)); // offset low
+        f->put<little, uint>(seg.offset>>32); // offset high
+        f->put<little, uint>(0); // reserved 3
         for(int i = seg.firstindex; i < index.length(); i++)
         {
             aviindexentry &e = index[i];
             if(e.type) continue;
-            f->put<LITTLE, uint>(e.offset + 4 + 4);
-            f->put<LITTLE, uint>(e.size);
+            f->put<little, uint>(e.offset + 4 + 4);
+            f->put<little, uint>(e.size);
         }
         endchunk(); // ix00
         seg.videoindexsize = uint(totalsize - seg.videoindexoffset);
@@ -705,19 +705,19 @@ struct aviwriter
             seg.soundframes = soundframes;
             seg.soundindexoffset = totalsize;
             startchunk("ix01", 24 + soundframes*8);
-            f->put<LITTLE, ushort>(2); // longs per entry
-            f->put<LITTLE, ushort>(0x0100); // index of chunks
-            f->put<LITTLE, uint>(soundframes); // entries in use
+            f->put<little, ushort>(2); // longs per entry
+            f->put<little, ushort>(0x0100); // index of chunks
+            f->put<little, uint>(soundframes); // entries in use
             f->write("01wb", 4); // chunk id
-            f->put<LITTLE, uint>(seg.offset&stream::offset(0xFFFFFFFFU)); // offset low
-            f->put<LITTLE, uint>(seg.offset>>32); // offset high
-            f->put<LITTLE, uint>(0); // reserved 3
+            f->put<little, uint>(seg.offset&stream::offset(0xFFFFFFFFU)); // offset low
+            f->put<little, uint>(seg.offset>>32); // offset high
+            f->put<little, uint>(0); // reserved 3
             for(int i = seg.firstindex; i < index.length(); i++)
             {
                 aviindexentry &e = index[i];
                 if(!e.type) continue;
-                f->put<LITTLE, uint>(e.offset + 4 + 4);
-                f->put<LITTLE, uint>(e.size);
+                f->put<little, uint>(e.offset + 4 + 4);
+                f->put<little, uint>(e.size);
             }
             endchunk(); // ix01
             seg.soundindexsize = uint(totalsize - seg.soundindexoffset);

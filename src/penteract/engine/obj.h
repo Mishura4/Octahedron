@@ -1,6 +1,6 @@
 #include "engine.h"
 
-#include "IO/FileStream.h"
+#include "io/file_stream.h"
 
 struct obj;
 
@@ -32,9 +32,9 @@ struct obj : vertloader<obj>
             int len = strlen(filename);
             if(len < 4 || strcasecmp(&filename[len-4], ".obj")) return false;
 
-            auto file = g_engine->fileSystem().open(
+            auto file = g_engine->get_file_system().open(
               filename,
-              Octahedron::OpenFlags::INPUT | Octahedron::OpenFlags::BINARY
+              octahedron::open_flags::INPUT | octahedron::open_flags::BINARY
             );
             if(!file) return false;
 
@@ -86,7 +86,7 @@ struct obj : vertloader<obj>
 
             string meshname = "";
             vertmesh *curmesh = NULL;
-            while(auto line = file->getLine(2048))
+            while(auto line = file->get_next_line(2048))
             {
                 const char *c = line->c_str();
                 while(isspace(*c)) c++;

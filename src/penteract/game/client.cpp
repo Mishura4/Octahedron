@@ -250,7 +250,7 @@ namespace game
     void saveauthkeys()
     {
         string fname = "config/auth.cfg";
-        auto f = g_engine->fileSystem().open(path(fname), Octahedron::OpenFlags::OUTPUT);
+        auto f = g_engine->get_file_system().open(path(fname), octahedron::open_flags::OUTPUT);
         if(!f) { conoutf(CON_ERROR, "failed to open %s for writing", fname); return; }
         loopv(authkeys)
         {
@@ -878,7 +878,7 @@ namespace game
     int scaletime(int t) { return t*gamespeed; }
 
     // collect c2s messages conveniently
-    Octahedron::DynamicBuffer messages;
+    octahedron::dynamic_buffer messages;
     int messagecn = -1, messagereliable = false;
 
     bool addmsg(int type, const char *fmt, ...)
@@ -935,7 +935,7 @@ namespace game
         if(mcn != messagecn)
         {
             static uchar mbuf[16];
-						Octahedron::Serializer m(mbuf, sizeof(mbuf));
+						octahedron::serializer m(mbuf, sizeof(mbuf));
             putint(m, N_FROMAI);
             putint(m, mcn);
             messages.put(mbuf, m.tell());
@@ -1748,7 +1748,7 @@ namespace game
                         if(p.remaining() < 2) return;
                         int extra = lilswap(*(const ushort *)p.pad(2));
                         if(p.remaining() < extra) return;
-												Octahedron::ucharbuf ebuf{p.buf + p.len, size_t(extra)};
+												octahedron::ucharbuf ebuf{p.buf + p.len, size_t(extra)};
                         if(sel.validate()) mpedittex(tex, allfaces, sel, ebuf);
                         break;
                     }
@@ -1766,7 +1766,7 @@ namespace game
                         int extra = lilswap(*(const ushort *)p.pad(2));
 												if (p.remaining() < extra)
 														return;
-												Octahedron::ucharbuf ebuf{p.buf + p.len, size_t(extra)};
+												octahedron::ucharbuf ebuf{p.buf + p.len, size_t(extra)};
                         if(sel.validate()) mpreplacetex(oldtex, newtex, insel>0, sel, ebuf);
                         break;
                     }
@@ -1779,7 +1779,7 @@ namespace game
                         int extra = lilswap(*(const ushort *)p.pad(2));
 												if (p.remaining() < extra)
 														return;
-												Octahedron::ucharbuf ebuf{p.buf + p.len, size_t(extra)};
+												octahedron::ucharbuf ebuf{p.buf + p.len, size_t(extra)};
                         if(sel.validate()) mpeditvslot(delta, allfaces, sel, ebuf);
                         break;
                     }
@@ -2067,16 +2067,16 @@ namespace game
                 }
                 int len = strlen(fname);
                 if(len < 4 || strcasecmp(&fname[len-4], ".dmo")) concatstring(fname, ".dmo");
-                std::unique_ptr<Octahedron::FileStream> demo{nullptr};
+                std::unique_ptr<octahedron::file_stream> demo{nullptr};
                 if (const char *buf = server::getdemofile(fname, true))
-                    demo = g_engine->fileSystem().open(
+                    demo = g_engine->get_file_system().open(
                       buf,
-                      Octahedron::OpenFlags::OUTPUT | Octahedron::OpenFlags::BINARY
+                      octahedron::open_flags::OUTPUT | octahedron::open_flags::BINARY
                     );
                 if (!demo)
-                    demo = g_engine->fileSystem().open(
+                    demo = g_engine->get_file_system().open(
                       path(fname),
-                      Octahedron::OpenFlags::OUTPUT | Octahedron::OpenFlags::BINARY
+                      octahedron::open_flags::OUTPUT | octahedron::open_flags::BINARY
                     );
                 if(!demo) return;
                 conoutf("received demo \"%s\"", fname);
@@ -2092,9 +2092,9 @@ namespace game
                 copystring(oldname, getclientmap());
                 defformatstring(mname, "getmap_%d", lastmillis);
                 defformatstring(fname, "media/map/%s.ogz", mname);
-                auto map = g_engine->fileSystem().open(
+                auto map = g_engine->get_file_system().open(
                   path(fname),
-                  Octahedron::OpenFlags::OUTPUT | Octahedron::OpenFlags::BINARY
+                  octahedron::open_flags::OUTPUT | octahedron::open_flags::BINARY
                 );
                 if(!map) return;
                 conoutf("received map");
@@ -2102,7 +2102,7 @@ namespace game
                 map->write(b.buf, b.maxlen);
                 if(load_world(mname, oldname[0] ? oldname : NULL))
                     entities::spawnitems(true);
-                g_engine->fileSystem().remove(fname);
+                g_engine->get_file_system().remove(fname);
                 break;
             }
         }
@@ -2193,9 +2193,9 @@ namespace game
         defformatstring(mname, "sendmap_%d", lastmillis);
         save_world(mname, true);
         defformatstring(fname, "media/map/%s.ogz", mname);
-        auto map = g_engine->fileSystem().open(
+        auto map = g_engine->get_file_system().open(
           path(fname),
-          Octahedron::OpenFlags::INPUT | Octahedron::OpenFlags::BINARY
+          octahedron::open_flags::INPUT | octahedron::open_flags::BINARY
         );
         if(map)
         {
@@ -2210,7 +2210,7 @@ namespace game
         }
         else
             conoutf(CON_ERROR, "could not read map");
-        g_engine->fileSystem().remove(fname);
+        g_engine->get_file_system().remove(fname);
     }
     COMMAND(sendmap, "");
 

@@ -1544,13 +1544,13 @@ int getuint(T &p)
 	return n;
 }
 
-#include "IO/IOInterface.h"
+#include "io/io_interface.h"
 
 template <class T>
 void putfloat(T &p, float f)
 {
-		if constexpr (requires(T &t) { p.template put<Octahedron::Endianness::LITTLE>(float()); })
-		p.template put<Octahedron::Endianness::LITTLE>(f);
+		if constexpr (requires(T &t) { p.template put<octahedron::endianness::little>(float()); })
+		p.template put<octahedron::endianness::little>(f);
 		else
 		{
 			lilswap(&f, 1);
@@ -1561,10 +1561,10 @@ void putfloat(T &p, float f)
 template <class T>
 float getfloat(T &p)
 {
-		if constexpr (requires(T &t, float &f) { p.template get<Octahedron::Endianness::LITTLE>(f); })
+		if constexpr (requires(T &t, float &f) { p.template get<octahedron::endianness::little>(f); })
 		{
 		float f;
-		p.template get<Octahedron::Endianness::LITTLE>(f);
+		p.template get<octahedron::endianness::little>(f);
 			return (f);
 		}
 		else

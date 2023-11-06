@@ -1,4 +1,4 @@
-#include "../../main/IO/Serializer.h"
+#include "../../main/io/serializer.h"
 
 struct GlobalShaderParamState
 {
@@ -858,7 +858,7 @@ extern VSlot *findvslot(Slot &slot, const VSlot &src, const VSlot &delta);
 extern VSlot *editvslot(const VSlot &src, const VSlot &delta);
 extern void mergevslot(VSlot &dst, const VSlot &src, const VSlot &delta);
 extern void packvslot(vector<uchar> &buf, const VSlot &src);
-extern bool unpackvslot(Octahedron::Serializer<std::span<uchar>> &buf, VSlot &dst, bool delta);
+extern bool unpackvslot(octahedron::serializer<std::span<uchar>> &buf, VSlot &dst, bool delta);
 
 extern Slot dummyslot;
 extern VSlot dummyvslot;
@@ -870,7 +870,7 @@ extern vector<VSlot *> vslots;
 extern vector<VSlot *> vslots;
 
 template <typename T>
-void packvslot(Octahedron::IOWriteable<T> &buf, const VSlot &src)
+void packvslot(octahedron::io_write_interface<T> &buf, const VSlot &src)
 {
 		if (src.changed & (1 << VSLOT_SHPARAM))
 		{
@@ -939,7 +939,7 @@ void packvslot(Octahedron::IOWriteable<T> &buf, const VSlot &src)
 }
 
 template <typename T>
-void packvslot(Octahedron::IOWriteable<T> &buf, int index)
+void packvslot(octahedron::io_write_interface<T> &buf, int index)
 {
 		if (vslots.inrange(index))
 		packvslot(buf, *vslots[index]);
@@ -948,7 +948,7 @@ void packvslot(Octahedron::IOWriteable<T> &buf, int index)
 }
 
 template <typename T>
-void packvslot(Octahedron::IOWriteable<T> &buf, const VSlot *vs)
+void packvslot(octahedron::io_write_interface<T> &buf, const VSlot *vs)
 {
 		if (vs)
 		packvslot(buf, *vs);

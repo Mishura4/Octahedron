@@ -1946,69 +1946,69 @@ static inline float tan360(int angle) { const vec2 &sc = sincos360[angle]; retur
 static inline float cotan360(int angle) { const vec2 &sc = sincos360[angle]; return sc.x/sc.y; }
 
 
-#include "IO/IOInterface.h"
+#include "io/io_interface.h"
 
-namespace Octahedron
+namespace octahedron
 {
 		template <>
-		struct IOHelper<vec2>
+		struct io_helper<vec2>
 		{
 				template <typename T>
-				auto get(IOReadable<T> *interface, vec2 &vec) const
+				auto get(io_read_interface<T> *interface, vec2 &vec) const
 				{
 						return (interface->get(vec.v));
 				}
 
 				template <typename T>
-				auto put(IOWriteable<T> *interface, const vec2 &vec) const
+				auto put(io_write_interface<T> *interface, const vec2 &vec) const
 				{
 						return (interface->put(vec.v));
 				}
 		};
 
 		template <>
-		struct IOHelper<vec>
+		struct io_helper<vec>
 		{
 				template <typename T>
-				auto get(IOReadable<T> *interface, vec &vec) const
+				auto get(io_read_interface<T> *interface, vec &vec) const
 				{
 						return (interface->get(vec.v));
 				}
 
 				template <typename T>
-				auto put(IOWriteable<T> *interface, const vec &vec) const
+				auto put(io_write_interface<T> *interface, const vec &vec) const
 				{
 						return (interface->put(vec.v));
 				}
 		};
 
 		template <>
-		struct IOHelper<ivec>
+		struct io_helper<ivec>
 		{
 				template <typename T>
-				auto get(IOReadable<T> *interface, ivec &vec) const
+				auto get(io_read_interface<T> *interface, ivec &vec) const
 				{
 						return (interface->get(vec.v));
 				}
 
 				template <typename T>
-				auto put(IOWriteable<T> *interface, const ivec &vec) const
+				auto put(io_write_interface<T> *interface, const ivec &vec) const
 				{
 						return (interface->put(vec.v));
 				}
 		};
 
 		template <>
-		struct IOHelper<ivec2>
+		struct io_helper<ivec2>
 		{
 				template <typename T>
-				auto get(IOReadable<T> *interface, ivec2 &vec) const
+				auto get(io_read_interface<T> *interface, ivec2 &vec) const
 				{
 						return (interface->get(vec.v));
 				}
 
 				template <typename T>
-				auto put(IOWriteable<T> *interface, const ivec2 &vec) const
+				auto put(io_write_interface<T> *interface, const ivec2 &vec) const
 				{
 						return (interface->put(vec.v));
 				}

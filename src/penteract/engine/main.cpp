@@ -2,8 +2,8 @@
 
 #include "engine.h"
 
-#include "Octahedron.h"
-#include "Engine/Engine.h"
+#include "octahedron.h"
+#include "engine/engine.h"
 
 #ifdef SDL_VIDEO_DRIVER_X11
 #include "SDL_syswm.h"
@@ -1098,7 +1098,7 @@ int main(int argc, char **argv)
     #endif
     #endif
     #endif
-    Octahedron::Engine engine(argc, argv);
+    octahedron::engine engine(argc, argv);
 
     int dedicated = 0;
     char *load = NULL, *initscript = NULL;
@@ -1227,12 +1227,12 @@ int main(int argc, char **argv)
 
     logoutf("init: mainloop");
 
-    if (g_engine->fileSystem().isAccessible("once.cfg"))
+    if (g_engine->get_file_system().is_accessible("once.cfg"))
     {
         if (execfile("once.cfg", false))
-            g_engine->fileSystem().remove("once.cfg");
+            g_engine->get_file_system().remove("once.cfg");
         else
-            Octahedron::log(Octahedron::LogLevel::WARN, "failed to execute {}", "once.cfg");
+            octahedron::log(octahedron::log_level::WARN, "failed to execute {}", "once.cfg");
     }
 
     if(load)

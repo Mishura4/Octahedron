@@ -1250,7 +1250,7 @@ bool waterpvsoccluded(int height)
     return false;
 }
 
-void saveviewcells(Octahedron::FileStream *f, viewcellnode &p)
+void saveviewcells(octahedron::file_stream *f, viewcellnode &p)
 {
 		f->put<char>(p.leafmask);
     loopi(8)
@@ -1260,7 +1260,7 @@ void saveviewcells(Octahedron::FileStream *f, viewcellnode &p)
     }
 }
 
-void savepvs(Octahedron::FileStream *f)
+void savepvs(octahedron::file_stream *f)
 {
     uint totallen = pvsbuf.length() | (numwaterplanes>0 ? 0x80000000U : 0);
     f->put<uint>(totallen);
@@ -1278,7 +1278,7 @@ void savepvs(Octahedron::FileStream *f)
     saveviewcells(f, *viewcells);
 }
 
-viewcellnode *loadviewcells(Octahedron::FileStream *f)
+viewcellnode *loadviewcells(octahedron::file_stream *f)
 {
     viewcellnode *p = new viewcellnode;
 		p->leafmask			= f->get<char>();
@@ -1290,7 +1290,7 @@ viewcellnode *loadviewcells(Octahedron::FileStream *f)
     return p;
 }
 
-void loadpvs(Octahedron::FileStream * f, int numpvs)
+void loadpvs(octahedron::file_stream * f, int numpvs)
 {
     uint totallen = f->get<uint>();
     if(totallen & 0x80000000U)

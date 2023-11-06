@@ -1,6 +1,6 @@
 #include "cube.h"
 
-#include "Engine/Engine.h"
+#include "engine/engine.h"
 
 ///////////////////////////// console ////////////////////////
 
@@ -490,7 +490,7 @@ int listfiles(const char *dir, const char *ext, vector<char *> &files)
         formatstring(s, "%s%s", homedir, dirname);
         if(listdir(s, false, ext, files)) dirs++;
     }
-    for (const auto &path : g_engine->fileSystem().packageDirs())
+    for (const auto &path : g_engine->get_file_system().get_package_dirs())
     {
         /* packagedir &pf = packagedirs[i];
         if(pf.filter && strncmp(dirname, pf.filter, dirlen == pf.filterlen-1 ? dirlen : pf.filterlen))
@@ -843,10 +843,10 @@ struct utf8stream : stream
     bool flush() { return file->flush(); }
 };
 #undef INPUT
-constexpr auto modetobitset = [](const char *mode) -> Octahedron::BitSet<Octahedron::OpenFlags>
+constexpr auto modetobitset = [](const char *mode) -> octahedron::bit_set<octahedron::open_flags>
 {
-  using of = Octahedron::OpenFlags;
-  Octahedron::BitSet<Octahedron::OpenFlags> f{0};
+  using of = octahedron::open_flags;
+  octahedron::bit_set<octahedron::open_flags> f{0};
 
   if (mode)
   {
@@ -880,10 +880,10 @@ constexpr auto modetobitset = [](const char *mode) -> Octahedron::BitSet<Octahed
 stream *openrawfile(const char *filename, const char *mode)
 {
 		auto flags = modetobitset(mode);
-    auto path = g_engine->fileSystem()._resolvePath(filename, flags);
+    auto path = g_engine->get_file_system()._resolve_path(filename, flags);
     if (!path)
     return NULL;
-		if (flags & (Octahedron::OpenFlags::APPEND | Octahedron::OpenFlags::TRUNCATE))
+		if (flags & (octahedron::open_flags::APPEND | octahedron::open_flags::TRUNCATE))
       std::filesystem::create_directories(path->parent_path());
     filestream *file = new filestream;
     if (!file->open(path->string().c_str(), mode))
@@ -905,7 +905,7 @@ stream *openfile(const char *filename, const char *mode)
 
 stream *opentempfile(const char *name, const char *mode)
 {
-    auto path = g_engine->fileSystem()._resolvePath(name, modetobitset(mode));
+    auto path = g_engine->get_file_system()._resolve_path(name, modetobitset(mode));
     filestream *file = new filestream;
     if(!file->opentemp(path ? path->string().c_str() : name, mode)) { delete file; return NULL; }
     return file;
@@ -922,9 +922,9 @@ stream *openutf8file(const char *filename, const char *mode, stream *file)
 
 char *loadfile(const char *fn, size_t *size, bool utf8)
 {
-    auto f = g_engine->fileSystem().open(
+    auto f = g_engine->get_file_system().open(
       fn,
-      Octahedron::OpenFlags::INPUT | Octahedron::OpenFlags::BINARY
+      octahedron::open_flags::INPUT | octahedron::open_flags::BINARY
     );
     if(!f) return NULL;
     stream::offset fsize = f->size();

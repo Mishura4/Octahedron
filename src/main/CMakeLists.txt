@@ -1,34 +1,34 @@
 add_library(Octahedron)
 
 set(OCTAHEDRON_HEADERS
-        ${CMAKE_CURRENT_LIST_DIR}/Octahedron.h
-        ${CMAKE_CURRENT_LIST_DIR}/Base.h
-        ${CMAKE_CURRENT_LIST_DIR}/Engine/Engine.h
-        ${CMAKE_CURRENT_LIST_DIR}/Tools/ProtectedPtr.h
-        ${CMAKE_CURRENT_LIST_DIR}/Tools/Math.h
-        ${CMAKE_CURRENT_LIST_DIR}/Tools/StringLiteral.h
-        ${CMAKE_CURRENT_LIST_DIR}/Tools/Exception.h
-        ${CMAKE_CURRENT_LIST_DIR}/Tools/ManagedResource.h
-        ${CMAKE_CURRENT_LIST_DIR}/IO/Logger.h
-        ${CMAKE_CURRENT_LIST_DIR}/IO/FileSystem.h
-        ${CMAKE_CURRENT_LIST_DIR}/IO/FileStream.h
-        ${CMAKE_CURRENT_LIST_DIR}/IO/IOInterface.h
-        ${CMAKE_CURRENT_LIST_DIR}/IO/GZFileStream.h
-        ${CMAKE_CURRENT_LIST_DIR}/IO/RawFileStream.h
-        ${CMAKE_CURRENT_LIST_DIR}/IO/Serializer.h
-        ${CMAKE_CURRENT_LIST_DIR}/IO/IOStream.h
-        ${CMAKE_CURRENT_LIST_DIR}/IO/IOInterface.h
+        ${CMAKE_CURRENT_LIST_DIR}/octahedron.h
+        ${CMAKE_CURRENT_LIST_DIR}/base.h
+        ${CMAKE_CURRENT_LIST_DIR}/engine/engine.h
+        ${CMAKE_CURRENT_LIST_DIR}/tools/protected_ptr.h
+        ${CMAKE_CURRENT_LIST_DIR}/tools/math.h
+        ${CMAKE_CURRENT_LIST_DIR}/tools/string_literal.h
+        ${CMAKE_CURRENT_LIST_DIR}/tools/exception.h
+        ${CMAKE_CURRENT_LIST_DIR}/tools/managed_resource.h
+        ${CMAKE_CURRENT_LIST_DIR}/io/logger.h
+        ${CMAKE_CURRENT_LIST_DIR}/io/file_system.h
+        ${CMAKE_CURRENT_LIST_DIR}/io/file_stream.h
+        ${CMAKE_CURRENT_LIST_DIR}/io/io_interface.h
+        ${CMAKE_CURRENT_LIST_DIR}/io/gz_file_stream.h
+        ${CMAKE_CURRENT_LIST_DIR}/io/raw_file_stream.h
+        ${CMAKE_CURRENT_LIST_DIR}/io/serializer.h
+        ${CMAKE_CURRENT_LIST_DIR}/io/io_stream.h
+        ${CMAKE_CURRENT_LIST_DIR}/io/io_interface.h
 )
 
 set(OCTAHEDRON_SOURCES
-        ${CMAKE_CURRENT_LIST_DIR}/Octahedron.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/Engine/Engine.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/IO/FileSystem.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/IO/IOStream.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/IO/FileStream.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/IO/GZFileStream.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/IO/RawFileStream.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/IO/DynamicBuffer.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/octahedron.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/engine/engine.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/io/file_system.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/io/io_stream.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/io/file_stream.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/io/gz_file_stream.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/io/raw_file_stream.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/io/dynamic_buffer.cpp
 )
 
 source_group(
@@ -46,7 +46,7 @@ target_sources(Octahedron
         ${OCTAHEDRON_HEADERS}
     PRIVATE
         ${OCTAHEDRON_SOURCES}
-)
+ "io/utf8_stream.h" "io/utf8_stream.cpp" "io/encoding.h" "io/encoding.cpp")
 
 set_target_properties(Octahedron
     PROPERTIES
@@ -63,20 +63,21 @@ if (MSVC)
             WINVER=_WIN32_WINNT_WIN7)
 endif()
 
-target_precompile_headers(Octahedron PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}/Octahedron.h
-        ${CMAKE_CURRENT_LIST_DIR}/Engine/Engine.h
-        ${CMAKE_CURRENT_LIST_DIR}/Tools/TypeList.h
-        ${CMAKE_CURRENT_LIST_DIR}/Tools/ValueList.h
-        ${CMAKE_CURRENT_LIST_DIR}/Tools/Registry.h
-        ${CMAKE_CURRENT_LIST_DIR}/IO/Logger.h
-        ${CMAKE_CURRENT_LIST_DIR}/IO/IOInterface.h
-        ${CMAKE_CURRENT_LIST_DIR}/IO/Serializer.h
-        ${CMAKE_CURRENT_LIST_DIR}/IO/IOInterface.h
-)
+#target_precompile_headers(Octahedron PRIVATE
+#        ${CMAKE_CURRENT_LIST_DIR}/octahedron.h
+#        ${CMAKE_CURRENT_LIST_DIR}/engine/engine.h
+#        ${CMAKE_CURRENT_LIST_DIR}/tools/type_list.h
+#        ${CMAKE_CURRENT_LIST_DIR}/tools/value_list.h
+#        ${CMAKE_CURRENT_LIST_DIR}/tools/registry.h
+#        ${CMAKE_CURRENT_LIST_DIR}/io/logger.h
+#        ${CMAKE_CURRENT_LIST_DIR}/io/io_interface.h
+#        ${CMAKE_CURRENT_LIST_DIR}/io/serializer.h
+#        ${CMAKE_CURRENT_LIST_DIR}/io/io_interface.h
+#)
 
 target_include_directories(Octahedron PUBLIC ${CMAKE_CURRENT_LIST_DIR})
 target_include_directories(Octahedron PUBLIC ${ZSTR_DIR})
+
 target_link_libraries(Octahedron PUBLIC SDL2-static)
 target_link_libraries(Octahedron PUBLIC SDL2_image)
 target_link_libraries(Octahedron PUBLIC SDL2_mixer)

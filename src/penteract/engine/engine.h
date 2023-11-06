@@ -110,8 +110,8 @@ extern bool pvsoccluded(const ivec &bbmin, const ivec &bbmax);
 extern bool pvsoccludedsphere(const vec &center, float radius);
 extern bool waterpvsoccluded(int height);
 extern void setviewcell(const vec &p);
-extern void savepvs(Octahedron::FileStream *f);
-extern void loadpvs(Octahedron::FileStream *f, int numpvs);
+extern void savepvs(octahedron::file_stream *f);
+extern void loadpvs(octahedron::file_stream *f, int numpvs);
 extern int getnumviewcells();
 
 static inline bool pvsoccluded(const ivec &bborigin, int size)
@@ -785,8 +785,8 @@ extern void stoppaintblendmap();
 extern void trypaintblendmap();
 extern void renderblendbrush(GLuint tex, float x, float y, float w, float h);
 extern void renderblendbrush();
-extern bool						loadblendmap(Octahedron::FileStream *f, int info);
-extern void						saveblendmap(Octahedron::FileStream *f);
+extern bool						loadblendmap(octahedron::file_stream *f, int info);
+extern void						saveblendmap(octahedron::file_stream *f);
 extern uchar shouldsaveblendmap();
 extern bool usesblendmap(int x1 = 0, int y1 = 0, int x2 = worldsize, int y2 = worldsize);
 extern int calcblendlayer(int x1, int y1, int x2, int y2);

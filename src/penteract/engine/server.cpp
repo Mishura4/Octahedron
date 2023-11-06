@@ -42,7 +42,7 @@ static void writelog(FILE *file, const char *buf)
     {
         size_t numu = encodeutf8((uchar *)ubuf, sizeof(ubuf)-1, &((const uchar *)buf)[carry], len - carry, &carry);
         if(carry >= len) ubuf[numu++] = '\n';
-        g_engine->log(Octahedron::LogLevel::BASIC, "{}", std::string_view{ubuf, len});
+        g_engine->log(octahedron::log_level::BASIC, "{}", std::string_view{ubuf, len});
     }
 }
 
@@ -234,7 +234,7 @@ ENetPacket *sendf(int cn, int chan, const char *format, ...)
     return packet->referenceCount > 0 ? packet : NULL;
 }
 
-ENetPacket *sendfile(int cn, int chan, Octahedron::FileStream *file, const char *format, ...)
+ENetPacket *sendfile(int cn, int chan, octahedron::file_stream *file, const char *format, ...)
 {
     if(cn < 0)
     {

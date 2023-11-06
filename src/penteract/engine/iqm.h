@@ -324,9 +324,9 @@ struct iqm : skelloader<iqm>
 
         bool loadiqm(const char *filename, bool doloadmesh, bool doloadanim)
         {
-            auto f = g_engine->fileSystem().open(
+            auto f = g_engine->get_file_system().open(
               filename,
-              Octahedron::OpenFlags::INPUT | Octahedron::OpenFlags::BINARY
+              octahedron::open_flags::INPUT | octahedron::open_flags::BINARY
             );
             if(!f) return false;
 

@@ -390,7 +390,7 @@ namespace server
     int interm = 0;
     enet_uint32 lastsend = 0;
     int mastermode = MM_OPEN, mastermask = MM_PRIVSERV;
-    std::unique_ptr<Octahedron::FileStream> mapdata{nullptr};
+    std::unique_ptr<octahedron::file_stream> mapdata{nullptr};
 
     vector<uint> allowedips;
     vector<ban> bannedips;
@@ -598,9 +598,9 @@ namespace server
     vector<demofile> demos;
 
     bool demonextmatch = false;
-    std::unique_ptr<Octahedron::FileStream> demotmp{nullptr};
-    std::unique_ptr<Octahedron::FileStream> demorecord{nullptr};
-    std::unique_ptr<Octahedron::FileStream> demoplayback{nullptr};
+    std::unique_ptr<octahedron::file_stream> demotmp{nullptr};
+    std::unique_ptr<octahedron::file_stream> demorecord{nullptr};
+    std::unique_ptr<octahedron::file_stream> demoplayback{nullptr};
 
     int nextplayback = 0;
 
@@ -992,7 +992,7 @@ namespace server
 
     void adddemo()
     {
-        Octahedron::log(Octahedron::LogLevel::ERROR, "server::adddemo() NYI");
+        octahedron::log(octahedron::log_level::ERROR, "server::adddemo() NYI");
         if(!demotmp) return;
         int len = (int)min(demotmp->size(), size_t((maxdemosize<<20) + 0x10000));
         demofile &d = demos.add();
@@ -1010,7 +1010,7 @@ namespace server
 
     void enddemorecord()
     {
-        Octahedron::log(Octahedron::LogLevel::ERROR, "server::adddemorecord() NYI");
+        octahedron::log(octahedron::log_level::ERROR, "server::adddemorecord() NYI");
         if(!demorecord) return;
 
         demorecord = nullptr;
@@ -1024,7 +1024,7 @@ namespace server
 
     void writedemo(int chan, void *data, int len)
     {
-        Octahedron::log(Octahedron::LogLevel::ERROR, "server::writedemo() NYI");
+        octahedron::log(octahedron::log_level::ERROR, "server::writedemo() NYI");
         if(!demorecord) return;
         int stamp[3] = { gamemillis, chan, len };
         lilswap(stamp, 3);
@@ -1043,8 +1043,8 @@ namespace server
 
     void setupdemorecord()
     {
-        Octahedron::log(Octahedron::LogLevel::ERROR, "setupdemorecord(): unimplemented");
-        /*using enum Octahedron::OpenFlags;
+        octahedron::log(octahedron::log_level::ERROR, "setupdemorecord(): unimplemented");
+        /*using enum octahedron::OpenFlags;
 
         if(!m_mp(gamemode) || m_edit) return;
 
@@ -1146,14 +1146,14 @@ namespace server
         int dirlen = strlen(buf);
         if(buf[dirlen] != '/' && buf[dirlen] != '\\' && dirlen+1 < (int)sizeof(buf)) { buf[dirlen++] = '/'; buf[dirlen] = '\0'; }
         if (init)
-            g_engine->fileSystem().createPath(buf);
+            g_engine->get_file_system().create_folders(buf);
         concatstring(buf, file);
         return buf;
     }
 
     void setupdemoplayback()
     {
-        Octahedron::log(Octahedron::LogLevel::ERROR, "server::setupdemoplayback() NYI");
+        octahedron::log(octahedron::log_level::ERROR, "server::setupdemoplayback() NYI");
         /*if(demoplayback) return;
         demoheader hdr;
         string msg;
@@ -2825,12 +2825,12 @@ namespace server
 
     void receivefile(int sender, uchar *data, int len)
     {
-        using enum Octahedron::OpenFlags;
+        using enum octahedron::open_flags;
 
         if(!m_edit || len <= 0 || len > 4*1024*1024) return;
         clientinfo *ci = getinfo(sender);
         if(ci->state.state==CS_SPECTATOR && !ci->privilege && !ci->local) return;
-        mapdata = g_engine->fileSystem().open("mapdata", INPUT | OUTPUT | TRUNCATE | BINARY | TEMPORARY);
+        mapdata = g_engine->get_file_system().open("mapdata", INPUT | OUTPUT | TRUNCATE | BINARY | TEMPORARY);
         if(!mapdata) { sendf(sender, 1, "ris", N_SERVMSG, "failed to open temporary file for map"); return; }
         mapdata->write(data, len);
         sendservmsgf("[%s sent a map to server, \"/getmap\" to receive it]", colorname(ci));

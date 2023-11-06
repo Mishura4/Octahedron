@@ -2,12 +2,12 @@
 
 #include "engine.h"
 
-#include "Tools/Math.h"
-#include "IO/FileStream.h"
-#include "IO/GZFileStream.h"
+#include "tools/math.h"
+#include "io/file_stream.h"
+#include "io/gz_file_stream.h"
 
-using Octahedron::FileStream;
-using Octahedron::LogLevel;
+using octahedron::file_stream;
+using octahedron::log_level;
 
 void validmapname(char *dst, const char *src, const char *prefix = NULL, const char *alt = "untitled", size_t maxlen = 100)
 {
@@ -36,30 +36,30 @@ static void fixent(entity &e, int version)
     }
 }
 
-static bool loadmapheader(FileStream *f, const char *ogzname, mapheader &hdr, octaheader &ohdr)
+static bool loadmapheader(file_stream *f, const char *ogzname, mapheader &hdr, octaheader &ohdr)
 {
 		if (auto ret = f->getAll(hdr.magic, hdr.version, hdr.headersize); !ret)
     {
-	    Octahedron::log(LogLevel::ERROR, "map {} has malformatted header", ogzname);
-			Octahedron::log(LogLevel::ERROR | LogLevel::DEBUG, "(expected to read {} bytes, got {})", ret.expected_size, ret.value);
+	    octahedron::log(log_level::ERROR, "map {} has malformatted header", ogzname);
+			octahedron::log(log_level::ERROR | log_level::DEBUG, "(expected to read {} bytes, got {})", ret.expected_size, ret.value);
     	return false;
     }
     if(!memcmp(hdr.magic, "TMAP", 4))
     {
         if(hdr.version>MAPVERSION)
         {
-	        Octahedron::log(LogLevel::ERROR, "map {} requires a newer version of Tesseract", ogzname);
+	        octahedron::log(log_level::ERROR, "map {} requires a newer version of Tesseract", ogzname);
         	return false;
         }
         if(auto ret = f->getAll(hdr.worldsize, hdr.numents, hdr.numpvs, hdr.blendmap, hdr.numvars, hdr.numvslots); !ret)
         {
-	        Octahedron::log(LogLevel::ERROR, "map {} has malformatted header", ogzname);
-					Octahedron::log(LogLevel::ERROR | LogLevel::DEBUG, "(expected to read {} bytes, got {})", ret.expected_size, ret.value);
+	        octahedron::log(log_level::ERROR, "map {} has malformatted header", ogzname);
+					octahedron::log(log_level::ERROR | log_level::DEBUG, "(expected to read {} bytes, got {})", ret.expected_size, ret.value);
         	return false;
 				}
 				if (hdr.worldsize <= 0 || hdr.numents < 0)
 				{
-					Octahedron::log(LogLevel::ERROR, "map {} has malformatted header", ogzname);
+					octahedron::log(log_level::ERROR, "map {} has malformatted header", ogzname);
 					return false;
 				}
     }
@@ -67,8 +67,8 @@ static bool loadmapheader(FileStream *f, const char *ogzname, mapheader &hdr, oc
 		{
 				if (hdr.version != OCTAVERSION)
 				{
-					Octahedron::log(
-						LogLevel::ERROR,
+					octahedron::log(
+						log_level::ERROR,
 						"map {} uses an unsupported map format version",
 						ogzname);
 					return false;
@@ -83,13 +83,13 @@ static bool loadmapheader(FileStream *f, const char *ogzname, mapheader &hdr, oc
 							ohdr.numvslots);
 						!ret)
 				{
-					Octahedron::log(LogLevel::ERROR, "map {} has malformatted header", ogzname);
-					Octahedron::log(LogLevel::ERROR | LogLevel::DEBUG, "(expected to read {} bytes, got {})", ret.expected_size, ret.value);
+					octahedron::log(log_level::ERROR, "map {} has malformatted header", ogzname);
+					octahedron::log(log_level::ERROR | log_level::DEBUG, "(expected to read {} bytes, got {})", ret.expected_size, ret.value);
 					return false;
 				}
 				if (ohdr.worldsize <= 0 || ohdr.numents < 0)
 				{
-					Octahedron::log(LogLevel::ERROR, "map {} has malformatted header", ogzname);
+					octahedron::log(log_level::ERROR, "map {} has malformatted header", ogzname);
 					return false;
 				}
 				memcpy(hdr.magic, "TMAP", 4);
@@ -104,7 +104,7 @@ static bool loadmapheader(FileStream *f, const char *ogzname, mapheader &hdr, oc
 		}
 		else
 		{
-				Octahedron::log(LogLevel::ERROR, "map {} uses an unsupported map type", ogzname);
+				octahedron::log(log_level::ERROR, "map {} uses an unsupported map type", ogzname);
 				return false;
 		}
 
@@ -113,13 +113,13 @@ static bool loadmapheader(FileStream *f, const char *ogzname, mapheader &hdr, oc
 
 bool loadents(const char *fname, vector<entity> &ents, uint *crc)
 {
-	  using OpenFlags = Octahedron::OpenFlags;
+	  using OpenFlags = octahedron::open_flags;
 
     string name;
     validmapname(name, fname);
     defformatstring(ogzname, "media/map/%s.ogz", name);
 		path(ogzname);
-		auto f = g_engine->fileSystem().openGZ(ogzname, OpenFlags::INPUT | OpenFlags::BINARY);
+		auto f = g_engine->get_file_system().open_gz(ogzname, OpenFlags::INPUT | OpenFlags::BINARY);
     if(!f) return false;
 
     mapheader hdr;
@@ -228,7 +228,7 @@ COMMAND(mapcfgname, "");
 
 void backup(const char *name, const char *backupname)
 {
-    g_engine->fileSystem().rename(name, backupname);
+    g_engine->get_file_system().rename(name, backupname);
 }
 
 enum { OCTSAV_CHILDREN = 0, OCTSAV_EMPTY, OCTSAV_SOLID, OCTSAV_NORMAL };
@@ -245,7 +245,7 @@ struct polysurfacecompat
 
 static int savemapprogress = 0;
 
-void savec(cube *c, const ivec &o, int size, FileStream *f, bool nolms)
+void savec(cube *c, const ivec &o, int size, file_stream *f, bool nolms)
 {
     if((savemapprogress++&0xFFF)==0) renderprogress(float(savemapprogress)/allocnodes, "saving octree...");
 
@@ -364,9 +364,9 @@ void savec(cube *c, const ivec &o, int size, FileStream *f, bool nolms)
     }
 }
 
-cube *loadchildren(FileStream *f, const ivec &co, int size, bool &failed);
+cube *loadchildren(file_stream *f, const ivec &co, int size, bool &failed);
 
-void loadc(FileStream *f, cube &c, const ivec &co, int size, bool &failed)
+void loadc(file_stream *f, cube &c, const ivec &co, int size, bool &failed)
 {
     int octsav = f->get<char>();
     switch(octsav&0x7)
@@ -387,7 +387,7 @@ void loadc(FileStream *f, cube &c, const ivec &co, int size, bool &failed)
     {
         int surfmask, totalverts;
         surfmask = f->get<char>();
-        totalverts = Octahedron::max(f->get<char>(), 0);
+        totalverts = octahedron::max(f->get<char>(), 0);
         newcubeext(c, totalverts, false);
         memset(c.ext->surfaces, 0, sizeof(c.ext->surfaces));
         memset(c.ext->verts(), 0, totalverts*sizeof(vertinfo));
@@ -474,7 +474,7 @@ void loadc(FileStream *f, cube &c, const ivec &co, int size, bool &failed)
     }
 }
 
-cube *loadchildren(FileStream *f, const ivec &co, int size, bool &failed)
+cube *loadchildren(file_stream *f, const ivec &co, int size, bool &failed)
 {
     cube *c = newcubes();
     loopi(8)
@@ -487,7 +487,7 @@ cube *loadchildren(FileStream *f, const ivec &co, int size, bool &failed)
 
 VAR(dbgvars, 0, 0, 1);
 
-void savevslot(FileStream *f, VSlot &vs, int prev)
+void savevslot(file_stream *f, VSlot &vs, int prev)
 {
     f->put(vs.changed);
     f->put(prev);
@@ -530,7 +530,7 @@ void savevslot(FileStream *f, VSlot &vs, int prev)
     if(vs.changed & (1<<VSLOT_DETAIL)) f->put(int(vs.detail));
 }
 
-void savevslots(FileStream *f, int numvslots)
+void savevslots(file_stream *f, int numvslots)
 {
     if(vslots.empty()) return;
     int *prev = new int[numvslots];
@@ -562,7 +562,7 @@ void savevslots(FileStream *f, int numvslots)
     delete[] prev;
 }
 
-void loadvslot(FileStream *f, VSlot &vs, int changed)
+void loadvslot(file_stream *f, VSlot &vs, int changed)
 {
     vs.changed = changed;
     if(vs.changed & (1<<VSLOT_SHPARAM))
@@ -609,7 +609,7 @@ void loadvslot(FileStream *f, VSlot &vs, int changed)
     if(vs.changed & (1<<VSLOT_DETAIL)) vs.detail = f->get<int>();
 }
 
-void loadvslots(FileStream *f, int numvslots)
+void loadvslots(file_stream *f, int numvslots)
 {
     int *prev = new (false) int[numvslots];
     if(!prev) return;
@@ -639,7 +639,7 @@ bool save_world(const char *mname, bool nolms)
     setmapfilenames(*mname ? mname : "untitled");
 		if (savebak)
 				backup(ogzname, bakname);
-		auto f = g_engine->fileSystem().openGZ(ogzname, Octahedron::OpenFlags::INPUT | Octahedron::OpenFlags::BINARY);
+		auto f = g_engine->get_file_system().open_gz(ogzname, octahedron::open_flags::INPUT | octahedron::open_flags::BINARY);
     if(!f) { conoutf(CON_WARN, "could not write map to %s", ogzname); return false; }
 
     int numvslots = vslots.length();
@@ -744,11 +744,11 @@ void clearmapcrc() { mapcrc = 0; }
 
 bool load_world(const char *mname, const char *cname)        // still supports all map formats that have existed since the earliest cube betas!
 {
-	  using OpenFlags = Octahedron::OpenFlags;
+	  using OpenFlags = octahedron::open_flags;
 
     int loadingstart = SDL_GetTicks();
     setmapfilenames(mname, cname);
-    auto f = g_engine->fileSystem().openGZ(ogzname, OpenFlags::INPUT | OpenFlags::BINARY);
+    auto f = g_engine->get_file_system().open_gz(ogzname, OpenFlags::INPUT | OpenFlags::BINARY);
     if(!f) { conoutf(CON_ERROR, "could not read map %s", ogzname); return false; }
 
     mapheader hdr;
@@ -781,8 +781,8 @@ bool load_world(const char *mname, const char *cname)        // still supports a
         char type = f->get<char>();
 				auto ilen = f->get<ushort>();
         string name;
-        f->read(name, Octahedron::min(ilen, MAXSTRLEN-1));
-				name[Octahedron::min(ilen, MAXSTRLEN - 1)] = '\0';
+        f->read(name, octahedron::min(ilen, MAXSTRLEN-1));
+				name[octahedron::min(ilen, MAXSTRLEN - 1)] = '\0';
         if(ilen >= MAXSTRLEN) f->seek(ilen - (MAXSTRLEN-1), SEEK_CUR);
         ident *id = getident(name);
         tagval val;
@@ -965,9 +965,9 @@ COMMAND(savecurrentmap, "");
 void writeobj(char *name)
 {
     defformatstring(fname, "%s.obj", name);
-    auto f = g_engine->fileSystem().open(
+    auto f = g_engine->get_file_system().open(
       name,
-      Octahedron::OpenFlags::OUTPUT | Octahedron::OpenFlags::BINARY
+      octahedron::open_flags::OUTPUT | octahedron::open_flags::BINARY
     );
     if(!f) return;
     f->put("# obj file of Cube 2 level\n\n");
@@ -1052,9 +1052,9 @@ void writeobj(char *name)
         f->put("\n");
     }
 
-    f = g_engine->fileSystem().open(
+    f = g_engine->get_file_system().open(
       mtlname.string(),
-      Octahedron::OpenFlags::OUTPUT | Octahedron::OpenFlags::BINARY
+      octahedron::open_flags::OUTPUT | octahedron::open_flags::BINARY
     );
     if(!f) return;
     f->put("# mtl file of Cube 2 level\n\n");
@@ -1160,9 +1160,9 @@ void writecollideobj(char *name)
     }
 
     defformatstring(fname, "%s.obj", name);
-    auto f = g_engine->fileSystem().open(
+    auto f = g_engine->get_file_system().open(
       name,
-      Octahedron::OpenFlags::OUTPUT
+      octahedron::open_flags::OUTPUT
     );
     if(!f) return;
     f->put("# obj file of Cube 2 collide model\n\n");

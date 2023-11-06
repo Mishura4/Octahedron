@@ -686,13 +686,13 @@ namespace ai
 
     void loadwaypoints(bool force, const char *mname)
     {
-    	  using Octahedron::OpenFlags;
+    	  using octahedron::open_flags;
 
         string wptname;
         if(!getwaypointfile(mname, wptname)) return;
         if(!force && (waypoints.length() || !strcmp(loadedwaypoints, wptname))) return;
 
-        auto f = g_engine->fileSystem().openGZ(wptname, OpenFlags::INPUT | OpenFlags::BINARY);
+        auto f = g_engine->get_file_system().open_gz(wptname, open_flags::INPUT | open_flags::BINARY);
         if(!f) return;
         char magic[4];
         if(f->read(magic, 4) < 4 || memcmp(magic, "OWPT", 4)) { return; }
@@ -729,7 +729,7 @@ namespace ai
 
     void savewaypoints(bool force, const char *mname)
 		{
-				using Octahedron::OpenFlags;
+				using octahedron::open_flags;
 
         if((!dropwaypoints && !force) || waypoints.empty()) return;
 
@@ -737,7 +737,7 @@ namespace ai
         if(!getwaypointfile(mname, wptname)) return;
 
 				// TODO: EXCEPTIONS
-				auto f = g_engine->fileSystem().openGZ(wptname, OpenFlags::OUTPUT | OpenFlags::INPUT);
+				auto f = g_engine->get_file_system().open_gz(wptname, open_flags::OUTPUT | open_flags::INPUT);
         if(!f) return;
         f->write("OWPT", 4);
         f->put<ushort>(waypoints.length()-1);

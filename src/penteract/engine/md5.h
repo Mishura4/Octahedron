@@ -1,6 +1,6 @@
 #include "engine.h"
 
-#include "IO/FileStream.h"
+#include "io/file_stream.h"
 
 struct md5;
 
@@ -87,14 +87,14 @@ struct md5 : skelloader<md5>
             }
         }
 
-        void load(Octahedron::FileStream *f, std::optional<std::string> &line)
+        void load(octahedron::file_stream *f, std::optional<std::string> &line)
         {
             md5weight w;
             md5vert v;
             tri t;
             int index;
 
-            while ((line = f->getLine(2048)) && line && !line->starts_with('}'))
+            while ((line = f->get_next_line(2048)) && line && !line->starts_with('}'))
             {
                 const char *buf = line->c_str();
 
@@ -164,11 +164,11 @@ struct md5 : skelloader<md5>
 
         bool loadmesh(const char *filename, float smooth)
         {
-            auto f = g_engine->fileSystem().open(filename, Octahedron::OpenFlags::INPUT);
+            auto f = g_engine->get_file_system().open(filename, octahedron::open_flags::INPUT);
             if(!f) return false;
 
             vector<md5joint> basejoints;
-            while(auto line = f->getLine(2048))
+            while(auto line = f->get_next_line(2048))
             {
                 const char *buf         = line->c_str();
 
@@ -194,7 +194,7 @@ struct md5 : skelloader<md5>
                     int parent;
                     md5joint j;
                     std::optional<std::string> line2;
-                    while ((line2 = f->getLine(2048)) && !line2->starts_with('}'))
+                    while ((line2 = f->get_next_line(2048)) && !line2->starts_with('}'))
                     {
                         const char *curbuf = line2->c_str();
                         char *curname = name;
@@ -274,7 +274,7 @@ struct md5 : skelloader<md5>
             skelanimspec *sa = skel->findskelanim(filename);
             if(sa) return sa;
 
-            auto f = g_engine->fileSystem().open(filename, Octahedron::OpenFlags::INPUT);
+            auto f = g_engine->get_file_system().open(filename, octahedron::open_flags::INPUT);
             if(!f) return NULL;
 
             vector<md5hierarchy> hierarchy;
@@ -282,7 +282,7 @@ struct md5 : skelloader<md5>
             int animdatalen = 0, animframes = 0;
             float *animdata = NULL;
             dualquat *animbones = NULL;
-            while(auto line = f->getLine(2048))
+            while(auto line = f->get_next_line(2048))
             {
                 const char *buf = line->c_str();
                 int tmp;
@@ -305,11 +305,11 @@ struct md5 : skelloader<md5>
                 }
                 else if(strstr(buf, "bounds {"))
                 {
-                    while ((line = f->getLine(2048)) && !line->starts_with('}'));
+                    while ((line = f->get_next_line(2048)) && !line->starts_with('}'));
                 }
                 else if(strstr(buf, "hierarchy {"))
                 {
-                    while ((line = f->getLine(2048)) && !line->starts_with('}'))
+                    while ((line = f->get_next_line(2048)) && !line->starts_with('}'))
                     {
                         buf = line->c_str();
                         string name;
@@ -333,7 +333,7 @@ struct md5 : skelloader<md5>
                 }
                 else if(strstr(buf, "baseframe {"))
                 {
-                    while ((line = f->getLine(2048)) && !line->starts_with('}'))
+                    while ((line = f->get_next_line(2048)) && !line->starts_with('}'))
                     {
                         buf = line->c_str();
                         md5joint j;
@@ -364,7 +364,7 @@ struct md5 : skelloader<md5>
                 }
                 else if(sscanf(buf, " frame %d", &tmp)==1)
                 {
-                    for (int numdata = 0; (line = f->getLine(2048)) && !line->starts_with('}');)
+                    for (int numdata = 0; (line = f->get_next_line(2048)) && !line->starts_with('}');)
                     {
                         buf = line->c_str();
                         for(const char *src = buf, *next = src; numdata < animdatalen; numdata++, src = next)

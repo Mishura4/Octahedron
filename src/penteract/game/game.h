@@ -541,7 +541,7 @@ namespace game
     // client
     extern bool                      connected, remote, demoplayback;
     extern string                    servdesc;
-    extern Octahedron::DynamicBuffer messages;
+    extern octahedron::dynamic_buffer messages;
 
     extern int parseplayer(const char *arg);
     extern void ignore(int cn);

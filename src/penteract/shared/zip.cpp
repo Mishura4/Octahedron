@@ -280,7 +280,7 @@ static void fixzipname(char (&pname)[N])
 
 bool addzip(const char *name, const char *mount = NULL, const char *strip = NULL)
 {
-  Octahedron::log(Octahedron::LogLevel::ERROR, "addzip not implemented");
+  octahedron::log(octahedron::log_level::ERROR, "addzip not implemented");
     /*string pname;
     copystring(pname, name);
     path(pname);

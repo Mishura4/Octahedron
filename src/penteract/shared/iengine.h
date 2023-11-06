@@ -1,11 +1,11 @@
 // the interface the game uses to access the engine
 
-#include "../../main/IO/Serializer.h"
+#include "../../main/io/serializer.h"
 
-#include "Engine/Engine.h"
-#include "IO/FileStream.h"
+#include "engine/engine.h"
+#include "io/file_stream.h"
 
-using Octahedron::g_engine;
+using octahedron::g_engine;
 
 extern int curtime;                     // current frame time
 extern int lastmillis;                  // last time
@@ -106,17 +106,17 @@ extern bool noedit(bool view = false, bool msg = true);
 extern void toggleedit(bool force = true);
 extern void mpeditface(int dir, int mode, selinfo &sel, bool local);
 extern void mpedittex(int tex, int allfaces, selinfo &sel, bool local);
-extern bool mpedittex(int tex, int allfaces, selinfo &sel, Octahedron::ucharbuf &buf);
+extern bool mpedittex(int tex, int allfaces, selinfo &sel, octahedron::ucharbuf &buf);
 extern void mpeditmat(int matid, int filter, selinfo &sel, bool local);
 extern void mpflip(selinfo &sel, bool local);
 extern void mpcopy(editinfo *&e, selinfo &sel, bool local);
 extern void mppaste(editinfo *&e, selinfo &sel, bool local);
 extern void mprotate(int cw, selinfo &sel, bool local);
 extern void mpreplacetex(int oldtex, int newtex, bool insel, selinfo &sel, bool local);
-extern bool mpreplacetex(int oldtex, int newtex, bool insel, selinfo &sel, Octahedron::ucharbuf &buf);
+extern bool mpreplacetex(int oldtex, int newtex, bool insel, selinfo &sel, octahedron::ucharbuf &buf);
 extern void mpdelcube(selinfo &sel, bool local);
 extern void mpremip(bool local);
-extern bool mpeditvslot(int delta, int allfaces, selinfo &sel, Octahedron::ucharbuf &buf);
+extern bool mpeditvslot(int delta, int allfaces, selinfo &sel, octahedron::ucharbuf &buf);
 extern void mpcalclight(bool local);
 
 // command
@@ -482,7 +482,7 @@ enum { DISC_NONE = 0, DISC_EOP, DISC_LOCAL, DISC_KICK, DISC_MSGERR, DISC_IPBAN, 
 extern void *getclientinfo(int i);
 extern ENetPeer *getclientpeer(int i);
 extern ENetPacket *sendf(int cn, int chan, const char *format, ...);
-extern ENetPacket *sendfile(int cn, int chan, Octahedron::FileStream *file, const char *format = "", ...);
+extern ENetPacket *sendfile(int cn, int chan, octahedron::file_stream *file, const char *format = "", ...);
 extern void sendpacket(int cn, int chan, ENetPacket *packet, int exclude = -1);
 extern void flushserver(bool force);
 extern int getservermtu();
