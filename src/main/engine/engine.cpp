@@ -150,7 +150,7 @@ void engine::log(bit_set<log_level> level, std::string_view line) {
 
 engine::engine(int argc, const char *const argv[]) {
 	if (g_engine != nullptr)
-		throw fatal_exception<"Another instance of the engine is already running">();
+		throw exception("Another instance of the engine is already running");
 
 	g_engine = this;
 

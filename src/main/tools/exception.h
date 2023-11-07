@@ -4,60 +4,81 @@
 #include <algorithm>
 #include <array>
 #include <ranges>
+#include <source_location>
 
 #include "math.h"
 #include "string_literal.h"
 
 namespace octahedron
 {
-template <typename Base, string_literal Literal>
-struct exception : Base {
-	const char *what() const final {
-		return (Literal.data);
+
+class exception : public std::exception {
+public:
+	exception() = default;
+
+	exception(std::string &&msg) :
+		message{std::move(msg)} {}
+
+	exception(const std::string &msg) :
+		message(msg) {}
+
+	exception(const exception &) = default;
+
+	exception(exception &&) = default;
+
+	exception& operator=(const exception &) = default;
+
+	exception& operator=(exception &&) = default;
+
+	char const* what() const override {
+		return (message.c_str());
 	}
+
+private:
+	std::string message;
 };
 
-template <typename Base>
-struct exception<Base, string_literal{""}> : Base {
-	static inline constexpr auto buffer_size = 512;
+class debug_exception : public exception {
+public:
+	debug_exception(std::source_location loc = std::source_location::current()) :
+		location{loc} {}
 
-	explicit exception(std::string_view msg) noexcept :
-		std::exception() {
-		auto size = min(msg.size(), buffer_size);
+	debug_exception(
+		const std::string &msg, bool full_msg = false, std::source_location loc = std::source_location::current()
+	) : exception{full_msg ? _format(msg.c_str(), loc) : msg}, location{loc}
+	{}
 
-		std::ranges::copy_n(msg.begin(), size, message.begin());
-		message[size - 1] = 0;
+	debug_exception(const debug_exception &) = default;
+
+	debug_exception(debug_exception &&) = default;
+
+	debug_exception& operator=(const debug_exception &) = default;
+
+	debug_exception& operator=(debug_exception &&) = default;
+
+	const std::source_location& where() const noexcept {
+		return (location);
 	}
 
-	exception(exception &&other) = delete;
-
-	exception(const exception &other) noexcept {
-		*this = other;
+	std::string format() const {
+		return (_format(what(), location));
 	}
 
-	exception& operator=(const exception &other) noexcept {
-		std::ranges::copy(other.message, message.begin());
-		return (*this);
+private:
+	static std::string _format(const char *msg, const std::source_location &loc) {
+		return (
+			fmt::format(
+			"{}\n"
+			"in {}\n\t"
+			"at {}:{} [{}]\n",
+			msg,
+			loc.function_name(),
+			loc.file_name(), loc.line(), loc.column())
+		);
 	}
-
-	exception& operator=(exception &&other) = delete;
-
-	const char *what() const final {
-		return (message.data());
-	}
-
-	std::array<char, buffer_size> message;
+	std::source_location location;
 };
 
-template <string_literal Message>
-struct fatal_exception : exception<std::exception, Message> {
-	using base = exception<std::exception, Message>;
-
-	using base::base;
-	using base::operator=;
-};
-
-fatal_exception(std::string_view msg) -> fatal_exception<"">;
 } // namespace octahedron
 
 #endif

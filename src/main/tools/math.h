@@ -4,8 +4,11 @@
 #include <type_traits>
 #include <utility>
 
+#include <cassert>
+
 namespace octahedron
 {
+
 template <class T>
 constexpr auto abs(T &&a) {
 	if constexpr (std::unsigned_integral<T>)
@@ -91,6 +94,26 @@ constexpr auto min(T &&a, U &&b, V &&c, Args &&... args) {
 		std::forward<Args>(args)...
 	));
 }
-}
+
+template <class T, class U>
+struct ratio {
+	T count;
+	U max;
+
+	constexpr bool valid() const noexcept {
+		return (max != 0);
+	}
+
+	constexpr double divide() {
+		assert(valid());
+		return (static_cast<double>(count) / static_cast<double>(max));
+	}
+
+	constexpr double get_percent() {
+		return (divide() * 100);
+	}
+};
+
+} // namespace octahedron
 
 #endif

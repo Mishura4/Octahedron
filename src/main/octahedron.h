@@ -7,8 +7,6 @@
 #include "io/logger.h"
 #include "tools/protected_ptr.h"
 
-namespace std::filesystem {};
-
 namespace octahedron
 {
 

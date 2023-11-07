@@ -11,8 +11,14 @@
       "args": [
         "-usave",
         "-glog.txt",
-        "--packagedirs \"~/data/ media/\""
+        "--packagedirs \u0022~/data/ media/\u0022"
       ]
+    },
+    {
+      "type": "default",
+      "project": "CMakeLists.txt",
+      "projectTarget": "tests.exe (tests\\tests.exe)",
+      "name": "tests.exe (tests\\tests.exe)"
     }
   ]
 }

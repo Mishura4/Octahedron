@@ -10,7 +10,6 @@
 #include <fmt/format.h>
 #include <fmt/std.h>
 
-#include "../octahedron.h"
 #include "../tools/managed_resource.h"
 
 #include "io_interface.h"
@@ -22,6 +21,7 @@
 
 namespace octahedron
 {
+
 namespace _
 {
 enum log_level : uint32 {
