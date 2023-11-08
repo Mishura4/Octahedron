@@ -379,6 +379,19 @@ struct ref {
 			if (ouroboros.append_range(std::move(arr)) != arr.size())
 				self.fail("append_range on a full ouroboros failed");
 		}
+
+		{
+			octahedron::ouroboros ouroboros2 = std::move(ouroboros);
+			octahedron::ouroboros<ref, 16> ouroboros3;
+
+			ouroboros3 = std::move(ouroboros2);
+		}
+
+		for (size_t i = 0; i < data.size(); ++i) {
+			if (!data[i].pass()) {
+				self.fail(fmt::format("failed to destroy object {}", i));
+			}
+		}
 	}
 
 	for (size_t i = 0; i < data.size(); ++i) {
