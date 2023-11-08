@@ -4,12 +4,14 @@
 
 namespace tests = octahedron::tests;
 
-void tests::test::fail(std::string reason) {
+void tests::test::fail(std::string reason, const std::source_location &where) {
+	std::filesystem::path filepath{where.file_name()};
+
 	if (reason.empty()) {
-		g_logger->log(log_level::BASIC, "[{}] {}", failure, name);
+		g_logger->log(log_level::BASIC, "{} {} ({}/{}:{})", failure, name, filepath.parent_path().stem(), filepath.filename(), where.line());
 	}
 	else {
-		g_logger->log(log_level::BASIC, "[{}] {}: {}", failure, name, reason);
+		g_logger->log(log_level::BASIC, "{} {} ({}/{}:{}): {}", failure, name, filepath.parent_path().stem(), filepath.filename(), where.line(), reason);
 	}
 	state = status::failure;
 }
@@ -17,31 +19,31 @@ void tests::test::fail(std::string reason) {
 void tests::test::skip(){
 	if (state == status::not_executed || state == status::started) {
 		state = status::skipped;
-		g_logger->log(log_level::BASIC, "[{}] {}", skipped, name);
+		g_logger->log(log_level::BASIC, "{} {}", skipped, name);
 	}
 }
 
 void tests::test::success() {
 	if (state != status::failure) {
 		state = status::success;
-		g_logger->log(log_level::BASIC, "[{}] {}", tests::success, name);
+		g_logger->log(log_level::BASIC, "{} {}", tests::success, name);
 	}
 }
 
 void tests::test::run() {
 	if (state == status::skipped)
 		return;
-		g_logger->log(log_level::BASIC, "[{}] {}", tests::starting, name);
+		g_logger->log(log_level::BASIC, "{} {}", tests::starting, name);
 	state = status::started;
 	try {
 		fun(*this);
 		success();
 	} catch (const test_failure_exception &e) {
-		g_logger->log(log_level::BASIC, "[{}] {}: {}", failure, name, e.format());
+		g_logger->log(log_level::BASIC, "{} {}: {}", failure, name, e.format());
 	} catch (const std::exception &e) {
-		g_logger->log(log_level::BASIC, "[{}] {}: exception `{}`", failure, name, e.what());
+		g_logger->log(log_level::BASIC, "{} {}: exception `{}`", failure, name, e.what());
 	} catch (...) {
-		g_logger->log(log_level::BASIC, "[{}] {}: exception (unknown)", failure, name);
+		g_logger->log(log_level::BASIC, "{} {}: exception (unknown)", failure, name);
 	}
 }
 

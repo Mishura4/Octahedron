@@ -18,12 +18,12 @@
 
 namespace octahedron::tests {
 
-inline const auto failure = styled("FAILURE", fg(fmt::terminal_color::red));
-inline const auto timeout = styled("TIMEOUT", fg(fmt::terminal_color::red));
-inline const auto not_executed = styled("NOT EXECUTED", fg(fmt::terminal_color::red));
-inline const auto starting = styled("STARTING", fg(fmt::terminal_color::bright_blue));
-inline const auto skipped = styled("SKIPPED", fg(fmt::terminal_color::yellow));
-inline const auto success = styled("SUCCESS", fg(fmt::terminal_color::green));
+inline const auto failure = fmt::format("[{}]", styled("FAILURE", fg(fmt::terminal_color::red)));
+inline const auto timeout = fmt::format("[{}]", styled("TIMEOUT", fg(fmt::terminal_color::red)));
+inline const auto not_executed = fmt::format("[{}]", styled("NOT EXECUTED", fg(fmt::terminal_color::red)));
+inline const auto starting = fmt::format("[{}]", styled("STARTING", fg(fmt::terminal_color::bright_blue)));
+inline const auto skipped = fmt::format("[{}]", styled("SKIPPED", fg(fmt::terminal_color::yellow)));
+inline const auto success = fmt::format("[{}]", styled("SUCCESS", fg(fmt::terminal_color::green)));
 
 class test {
 public:
@@ -53,7 +53,7 @@ public:
 
 	~test() = default;
 
-	void fail(std::string reason = {});
+	void fail(std::string reason = {}, const std::source_location &where = std::source_location::current());
 
 	void success();
 
