@@ -113,7 +113,7 @@ struct ref {
 		c = ring.push_back(c);
 		++c;
 	};
-	ring.reset();
+	ring.clear();
 	if (!ring.empty()) {
 		self.fail("empty() failed to return true after reset()");
 	}
@@ -205,7 +205,7 @@ struct ref {
 		c = ouroboros.push_back(c);
 		++c;
 	};
-	ouroboros.reset();
+	ouroboros.clear();
 	if (!ouroboros.empty()) {
 		self.fail("empty() failed to return true after reset()");
 	}
