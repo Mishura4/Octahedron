@@ -85,23 +85,24 @@ struct Formatter
 };*/
 
 template <typename T>
-struct loggable_helper {
-	static auto get(const T &u) noexcept {
-		if constexpr (requires { Formatter<T>::exists; }); // todo?
-		else
-			return (u);
+struct loggable_helper : std::identity {
+	T&& operator()(T&& v) const noexcept requires(!std::is_reference_v<T> || std::is_rvalue_reference_v<T>) {
+		return static_cast<T&&>(v);
 	}
 
-	using type = std::remove_reference_t<decltype(get(std::declval<const T&>()))>;
+	T& operator()(T& v) const noexcept requires(std::is_lvalue_reference_v<T>) {
+		return v;
+	}
 
+	using type = T;
 };
 
 template <typename T> requires(std::invocable<T>)
 struct loggable_helper<T> {
-	using type = std::remove_reference_t<std::invoke_result_t<T>>;
+	using type = std::invoke_result_t<T>;
 
 	template <typename U> requires(std::same_as<std::remove_cvref_t<U>, std::remove_cvref_t<T>>)
-	static auto get(U &&u) noexcept(std::is_nothrow_invocable_v<U>) {
+	constexpr std::invoke_result_t<T> operator()(U&& u) noexcept(std::is_nothrow_invocable_v<U>) {
 		return (std::invoke(std::forward<U>(u)));
 	}
 };
@@ -130,7 +131,7 @@ struct logger_base {
 
 		if (!(level & self.level))
 			return;
-		self.write(level, fmt::format(fmt, loggable_helper<Args>::get(args)...));
+		self.write(level, fmt::format(fmt, loggable_helper<Args>{}(std::forward<Args>(args))...));
 	}
 };
 
@@ -339,10 +340,10 @@ public:
 	}
 
 	template <typename... Args> requires(sizeof...(Args) > 0)
-	void log(log_level level, fmt::format_string<to_loggable<Args>...> fmt, Args &&... args) {
+	void log(log_level level, std::format_string<to_loggable<Args>...> fmt, Args&&... args) {
 		if (!((_collectiveLogLevel & level) == level))
 			return;
-		auto line = fmt::format(fmt, loggable_helper<Args>::get(args)...);
+		auto line = std::format(fmt, loggable_helper<Args>{}(std::forward<Args>(args))...);
 
 		_log(level, line, _idx_seq);
 	}
@@ -405,20 +406,5 @@ private:
 //
 //		octahedron::Formatter<T> _formatter{};
 //};
-
-template <typename T> requires(std::is_enum_v<T>)
-struct ::fmt::formatter<octahedron::bit_set<T>> {
-	template <typename ParseContext>
-	constexpr auto parse(ParseContext &ctx) {
-		return (_formatter.parse(ctx));
-	}
-
-	template <typename FormatContext>
-	auto format(const octahedron::bit_set<T> &me, FormatContext &ctx) {
-		return (_formatter.format(me.value, ctx));
-	}
-
-	::fmt::formatter<std::underlying_type_t<T>> _formatter{};
-};
 
 #endif

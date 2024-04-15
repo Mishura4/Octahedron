@@ -84,51 +84,209 @@ constexpr inline Predicate isWhitespace = [](auto &&c) constexpr noexcept {
 	}
 };
 
-template <size_t N>
-auto count_args(std::span<std::string_view> args, console_argument &argument) {
-	uint32 args_parsed{0};
 
-	if (args[0][0] == '-' && args[0].size() > 1 && args[0][1] != '-') {
-		args[0] = args[0].substr(2);
-	} else {
-		args = args.subspan(1);
-		++args_parsed;
-		for (std::string_view arg : args) {
-			if (arg.starts_with('-'))
-				break;
-			++args_parsed;
-		}
-	}
-	argument.value = {args.empty() ? std::string_view{} : args.front()};
-	return (args_parsed);
-}
 
-template <typename T, size_t N>
-using arg_field = typename T::field_type_list::template at<N>;
+enum class opt_argument_type {
+	/**
+	 * @brief Option takes no value
+	 */
+	none,
 
-template <typename R, typename... Fields> requires(std::ranges::range<std::remove_reference_t<R>>)
-size_t parse_argument(R &&args, registry<Fields...> &reg) {
-	using registry_type = registry<Fields...>;
+	/**
+	 * @brief Option has a required value
+	 */
+	required,
 
-	constexpr auto       impl0 =
-		[]<size_t... Ns>(R args, registry_type &reg, std::index_sequence<Ns...>) {
-		size_t         ret{1};
-		constexpr auto impl1 = []<size_t N>(R args, registry_type &reg, size_t &nargs) -> bool {
-			constexpr auto key = arg_field<registry_type, N>::key;
+	/**
+	 * @brief Option has an optional value
+	 */
+	optional,
 
-			if (auto &field = reg.template get<key>(); field.compare(args.front())) {
-				nargs = count_args<N>(args, field);
-				return (true);
-			}
-			return (false);
-		};
+	/**
+	 * @brief Option has a multiple values
+	 */
+	multiple
+};
 
-		(impl1.template operator()<Ns>(args, reg, ret) || ...);
-		return (ret);
+/**
+ * @brief Represents a command line option passed to the program
+ */
+struct cmd_option {
+	/**
+	 * @brief List of options the program uses
+	 */
+	enum options {
+		output_file,
+		max
 	};
 
-	return {impl0(args, reg, std::make_index_sequence<registry_type::key_list::size>())};
+	/**
+	 * @brief Short name of the option without the leading dash, e.g. `o` for output
+	 */
+	char short_opt = {};
+
+	/**
+	 * @brief Long name of the option without the leading dashes, e.g. `output` for output
+	 */
+	std::string_view long_opt = {};
+
+	/**
+	 * @brief Whether the option expects an argument or not
+	 */
+	opt_argument_type argument;
+
+	/**
+	 * @brief Value of the option
+	 */
+	std::vector<std::string_view> values = {};
+};
+
+using program_options_array = std::array<cmd_option, cmd_option::max>;
+
+
+class cmd_option_exception : exception {
+public:
+	using exception::exception;
+	using exception::operator=;
+};
+
+auto parse_cmd_options(int ac, char *av[]) {
+	auto options = std::to_array<cmd_option>({
+		{'g', "logfile", opt_argument_type::required, {}},
+		{'u', "home", opt_argument_type::required, {}},
+		{'k', "packagedirs", opt_argument_type::multiple, {}}
+	});
+	for (int i = 1; i < ac; ++i) {
+		if (av[i][0] == '-') {
+			auto it = options.end();
+
+			if (av[i][1] == '-') { // long option
+				const char *equal_chr = std::strchr(av[i] + 2, '=');
+				std::string_view opt;
+
+				if (equal_chr == nullptr) {
+					opt = av[i] + 2;
+				} else {
+					opt = {av[i] + 2, equal_chr};
+				}
+				it = std::ranges::find(options, opt, &cmd_option::long_opt);
+
+				if (it == options.end()) {
+					throw cmd_option_exception{std::string{"unknown option "} + av[i]};
+				}
+
+				switch (it->argument) {
+					using enum opt_argument_type;
+
+					case required:
+						if (equal_chr == nullptr) { // option is the next argument
+							if (i + 1 >= ac) {
+								throw cmd_option_exception{std::string{"option "} + av[i] + " requires an argument"};
+							}
+
+							it->values = { av[i + 1] };
+							++i;
+						} else { // option is in the same argument
+							it->values = { equal_chr + 1 };
+						}
+						break;
+
+					case optional:
+						if (equal_chr == nullptr) {
+							it->values = {};
+						} else {
+							it->values = { equal_chr + 1 };
+						}
+						break;
+
+					case multiple:
+						if (equal_chr == nullptr) {
+							++i;
+							while (i < ac && av[i][0] != '-') {
+								it->values.emplace_back(av[i]);
+								++i;
+							}
+						} else {
+							const char *begin = equal_chr;
+							const char *end;
+
+							while (begin != nullptr) {
+								++begin;
+								end = std::strrchr(begin, ',');
+								it->values.emplace_back(end == nullptr ? begin : std::string_view{begin, end});
+								begin = end;
+							}
+						}
+
+
+					case none:
+						break;
+				}
+			} else {
+				const char *opt = av[i] + 1;
+				bool done = false;
+
+				while (!done) {
+					it = std::ranges::find(options, *opt, &cmd_option::short_opt);
+
+					if (it == options.end()) {
+						throw cmd_option_exception{std::string{"unknown option "} + av[i]};
+					}
+
+					switch (it->argument) {
+						using enum opt_argument_type;
+
+						case required:
+							if (*(opt + 1) == 0) { // value is the next argument
+								if (i + 1 >= ac) {
+									throw cmd_option_exception{std::string{"option "} + av[i] + " requires an argument"};
+								}
+
+								it->values = { av[i + 1] };
+								++i;
+							} else { // value is in the same argument
+								it->values = { opt + 1 };
+							}
+							done = true;
+							break;
+
+						case optional:
+							it->values = { opt + 1 };
+							done = true;
+							break;
+
+						case multiple:
+							if (*(opt + 1) == 0) { // values are the next arguments
+								++i;
+								while (i < ac && av[i][0] != '-') {
+									it->values.emplace_back(av[i]);
+									++i;
+								}
+							} else {
+								const char *begin = opt + 1;
+								const char *end;
+
+								while (begin != nullptr) {
+									++begin;
+									end = std::strrchr(begin, ',');
+									it->values.emplace_back(end == nullptr ? begin : std::string_view{begin, end});
+									begin = end;
+								}
+							}
+
+
+						case none:
+							++opt;
+							done = *opt == 0;
+							break;
+					}
+				}
+			}
+		}
+	}
+	return options;
 }
+
 } // namespace
 
 #include "io/file_stream.h"
@@ -148,7 +306,7 @@ void engine::log(bit_set<log_level> level, std::string_view line) {
 	_logger.log(log_level{level}, line);
 }
 
-engine::engine(int argc, const char *const argv[]) {
+engine::engine(int argc, char *argv[]) {
 	if (g_engine != nullptr)
 		throw exception("Another instance of the engine is already running");
 
@@ -156,46 +314,14 @@ engine::engine(int argc, const char *const argv[]) {
 
 	namespace v = std::views;
 
-	registry parameters = {
-		field<"LOGFILE">(console_argument{"g"sv, "logfile"sv}),
-		field<"HOMEDIR">(console_argument{"u"sv, "home"sv}),
-		field<"PACKAGEDIRS">(console_argument{"k"sv, "packagedirs"sv})
-	};
+	auto arguments = parse_cmd_options(argc, argv);
 
-	std::vector<std::string_view> _args{argv, argv + argc};
-	size_t                        args_parsed = 1;
-	while (args_parsed < argc) {
-		size_t n = parse_argument(_args | v::drop(args_parsed), parameters);
-
-		args_parsed += n;
-	}
-
-	if (!parameters.get<"HOMEDIR">().value.empty())
-		_filesystem.set_home_dir(parameters.get<"HOMEDIR">().value);
-	if (!parameters.get<"LOGFILE">().value.empty())
-		set_log_file(parameters.get<"LOGFILE">().value);
-
-	namespace stdr = std::ranges;
-
-	std::string_view package_dirs = parameters.get<"PACKAGEDIRS">().value;
-	constexpr char   escape_delimiter = 0;
-	constexpr auto   is_dir = [](auto c) noexcept -> bool {
-		if (isWhitespace(c) && escape_delimiter == 0)
-			return (false);
-		/*
-		if (c == escape_delimiter)
-			escape_delimiter = 0;
-			*/
-		return (true);
-	};
-
-	while (!package_dirs.empty()) {
-		auto end = std::ranges::find_if_not(package_dirs, is_dir);
-		auto range = package_dirs | v::take(end - package_dirs.begin());
-
-		_filesystem.add_package_dir(range);
-		auto next = std::ranges::find_if_not(end, package_dirs.end(), isWhitespace);
-		package_dirs = package_dirs | v::drop(next - package_dirs.begin());
+	if (!arguments[1].values.empty())
+			_filesystem.set_home_dir(arguments[1].values[0]);
+	if (!arguments[0].values.empty())
+			set_log_file(arguments[0].values[0]);
+	for (std::string_view dir : arguments[1].values) {
+		_filesystem.add_package_dir(dir);
 	}
 }
 

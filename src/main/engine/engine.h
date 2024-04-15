@@ -19,44 +19,45 @@
 namespace octahedron
 {
 
-class engine {
+template <typename T> requires requires { T::now(); }
+class clock {
 public:
-	template <typename T> requires requires { T::now(); }
-	class clock {
-	public:
-		using timestamp = typename T::time_point;
-		using duration = microseconds;
-		using type = T;
+	using timestamp = typename T::time_point;
+	using duration = microseconds;
+	using type = T;
 
-		struct tick {
-			using clock = engine::clock<T>;
+	struct tick {
+		using clock = clock<T>;
 
-			timestamp time;
-			duration  real_diff;
-			duration  clamped_diff;
-		};
-
-		const tick& update(duration min_duration, duration max_duration);
-		const tick& update(duration min_duration);
-		const tick& update() noexcept;
-
-		const tick&      get_last_tick() const noexcept;
-		const timestamp& get_start_time() const noexcept;
-
-	private:
-		const timestamp _start_time{T::now()};
-		tick            _last_tick{_start_time, duration::zero(), duration::zero()};
+		timestamp time;
+		duration  real_diff;
+		duration  clamped_diff;
 	};
 
-	using game_clock = clock<std::chrono::steady_clock>;
-	using wall_clock = clock<std::chrono::system_clock>;
+	const tick& update(duration min_duration, duration max_duration);
+	const tick& update(duration min_duration);
+	const tick& update() noexcept;
+
+	const tick&      get_last_tick() const noexcept;
+	const timestamp& get_start_time() const noexcept;
+
+private:
+	const timestamp _start_time{T::now()};
+	tick            _last_tick{_start_time, duration::zero(), duration::zero()};
+};
+
+using game_clock = clock<std::chrono::steady_clock>;
+using wall_clock = clock<std::chrono::system_clock>;
+
+class engine {
+public:
 
 	struct parameter {
 		std::string_view name;
 		std::string_view value;
 	};
 
-	engine(int ac, const char *const argv[]);
+	engine(int ac, char *argv[]);
 	engine(const engine &) = delete;
 	engine(engine &&) = delete;
 
@@ -88,7 +89,7 @@ public:
 	) {
 		if (!_logger.is_log_enabled(log_level{level}))
 			return;
-		auto line = fmt::format(fmt, loggable_helper<Args>::get(std::forward<Args>(args))...);
+		auto line = fmt::format(fmt, loggable_helper<Args>{}(std::forward<Args>(args))...);
 
 		log(level, line);
 	}
@@ -133,7 +134,7 @@ private:
 };
 
 template <typename T> requires requires { T::now(); }
-auto engine::clock<T>::update(duration min_duration, duration max_duration) -> const tick& {
+auto clock<T>::update(duration min_duration, duration max_duration) -> const tick& {
 	timestamp now = T::now();
 	duration  real_diff = now - _last_tick.time;
 
@@ -151,7 +152,7 @@ auto engine::clock<T>::update(duration min_duration, duration max_duration) -> c
 }
 
 template <typename T> requires requires { T::now(); }
-auto engine::clock<T>::update(duration min_duration) -> const tick& {
+auto clock<T>::update(duration min_duration) -> const tick& {
 	timestamp now = T::now();
 	duration  real_diff = now - _last_tick.time;
 
@@ -165,7 +166,7 @@ auto engine::clock<T>::update(duration min_duration) -> const tick& {
 }
 
 template <typename T> requires requires { T::now(); }
-auto engine::clock<T>::update() noexcept -> const tick& {
+auto clock<T>::update() noexcept -> const tick& {
 	timestamp now = T::now();
 	duration  real_diff = now - _last_tick.time;
 
@@ -174,12 +175,12 @@ auto engine::clock<T>::update() noexcept -> const tick& {
 }
 
 template <typename T> requires requires { T::now(); }
-auto engine::clock<T>::get_last_tick() const noexcept -> const tick& {
+auto clock<T>::get_last_tick() const noexcept -> const tick& {
 	return (_last_tick);
 }
 
 template <typename T> requires requires { T::now(); }
-auto engine::clock<T>::get_start_time() const noexcept -> const timestamp& {
+auto clock<T>::get_start_time() const noexcept -> const timestamp& {
 	return (_start_time);
 }
 

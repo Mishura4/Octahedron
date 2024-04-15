@@ -1,6 +1,10 @@
 #ifndef OCTAHEDRON_TOOLS_UTIL_H_
 #define OCTAHEDRON_TOOLS_UTIL_H_
 
+#include <cassert>
+#include <type_traits>
+#include <concepts>
+
 namespace octahedron {
 
 template <class From, class To>
@@ -160,6 +164,26 @@ struct conditionally_apply<true, Trait<T>> {
 
 template <bool Condition, typename T>
 using conditionally_apply_t = typename conditionally_apply<Condition, T>::type;
+
+template <typename T, typename... Args>
+concept one_of = (std::same_as<T, Args> || ...);
+
+template <typename T>
+concept character = one_of<std::remove_cv_t<T>, char, char8_t, char16_t, char32_t, wchar_t>;
+
+template <typename T>
+concept implicit_lifetime_type =
+	/* scalar */ std::is_scalar_v<std::remove_cv_t<T>> ||
+	/* trivial-eligible class */ (
+		std::is_trivially_constructible_v<std::remove_cv_t<T>> &&
+		std::is_trivially_destructible_v<std::remove_cv_t<T>>
+	) ||
+	/* aggregate with trivial destructor */ (
+		std::is_aggregate_v<T> && std::is_trivially_destructible_v<std::remove_cv_t<T>>
+	) ||
+	/* arrays */ (
+		std::is_array_v<T>
+	);
 
 template <typename T>
 requires (!std::same_as<T, void>)

@@ -9,6 +9,7 @@ set(OCTAHEDRON_HEADERS
         ${CMAKE_CURRENT_LIST_DIR}/tools/string_literal.h
         ${CMAKE_CURRENT_LIST_DIR}/tools/exception.h
         ${CMAKE_CURRENT_LIST_DIR}/tools/managed_resource.h
+        ${CMAKE_CURRENT_LIST_DIR}/tools/tuple.h
         ${CMAKE_CURRENT_LIST_DIR}/io/logger.h
         ${CMAKE_CURRENT_LIST_DIR}/io/file_system.h
         ${CMAKE_CURRENT_LIST_DIR}/io/file_stream.h
@@ -84,3 +85,7 @@ target_link_libraries(Octahedron PUBLIC SDL2_mixer)
 target_link_libraries(Octahedron PUBLIC fmt)
 target_link_libraries(Octahedron PUBLIC Boost::pfr)
 target_link_libraries(Octahedron PUBLIC zlib)
+
+if (WIN32)
+    target_link_libraries(Octahedron PUBLIC SDL2::SDL2main)
+endif ()

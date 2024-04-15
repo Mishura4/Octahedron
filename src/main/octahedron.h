@@ -40,11 +40,11 @@ bool is_log_enabled(bit_set<log_level> logLevel) noexcept;
 void log(bit_set<log_level> level, std::string_view line);
 
 template <typename... Args> requires(sizeof...(Args) > 0)
-void log(bit_set<log_level> level, fmt::format_string<to_loggable<Args>...> fmt, Args &&... args) {
+void log(bit_set<log_level> level, fmt::format_string<to_loggable<Args>...> fmt, Args&&... args) {
 	if (!is_log_enabled(level))
 		return;
 	//auto line = fmt::format(fmt, (Formatter<std::decay_t<decltype(args)>>(loggable_helper<Args>::get(args)))...);
-	auto line = fmt::format(fmt, loggable_helper<Args>::get(args)...);
+	auto line = fmt::format(fmt, loggable_helper<Args>{}(std::forward<Args>(args))...);
 
 	log(level, line);
 }

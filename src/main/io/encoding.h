@@ -6,6 +6,8 @@
 #include <array>
 #include <ranges>
 
+#include <tools/util.h>
+
 namespace octahedron
 {
 
@@ -83,18 +85,171 @@ inline constexpr std::array UNICODE_TO_CUBE_OFFSETS = std::to_array<int>(
 );
 }
 
-inline constexpr auto cube_to_unicode = []<typename T>(T c) constexpr noexcept -> char32 requires (
-		std::same_as<char, T> || std::same_as<uchar, T>) {
-	return (_::CUBE_TO_UNICODE_CHARS[static_cast<uchar>(c)]);
+inline constexpr auto cube_to_unicode = []<character T>(T c) constexpr noexcept -> char32 {
+	return (_::CUBE_TO_UNICODE_CHARS[static_cast<uchar>(c & 0xFF)]);
 };
 
-inline constexpr auto unicode_to_cube = [](int c) constexpr -> char {
+inline constexpr auto unicode_to_cube = [](char32_t c) constexpr -> char {
 	using namespace _;
 
 	// Taken from Tesseract's stream.cpp
-	if (static_cast<unsigned int>(c) <= 0x7FF)
+	if (c <= 0x7FF)
 		return (UNICODE_TO_CUBE_CHARS[UNICODE_TO_CUBE_OFFSETS[c >> 8] + (c & 0xFF)]);
 	return (0);
+};
+
+[[msvc::intrinsic]] inline char32_t utf32(std::uint_least32_t codepoint) {
+	return (static_cast<char32_t>(codepoint));
+}
+
+constexpr char32_t utf8_to_32(uint32_t a) {
+	return (a);
+}
+
+constexpr char32_t utf8_to_32(uint32_t a, uint32_t b) {
+	return
+		((a & 0b00011111u) << 6) |
+		((b & 0b00111111u) << 0);
+}
+
+constexpr char32_t utf8_to_32(uint32_t a, uint32_t b, uint32_t c) {
+	return
+		((a & 0b00001111u) << 12) |
+		((b & 0b00111111u) << 6) |
+		((c & 0b00111111u) << 0);
+}
+
+constexpr char32_t utf8_to_32(uint32_t a, uint32_t b, uint32_t c, uint32_t d) {
+	return
+		((a & 0b00001111u) << 18) |
+		((b & 0b00111111u) << 12) |
+		((c & 0b00111111u) << 6) |
+		((d & 0b00111111u) << 0);
+}
+
+constexpr char32_t utf8_to_32(uint32_t a, uint32_t b, uint32_t c, uint32_t d, uint32_t e) {
+	return
+		((a & 0b00000111u) << 24) |
+		((b & 0b00111111u) << 18) |
+		((c & 0b00111111u) << 12) |
+		((d & 0b00111111u) << 6) |
+		((e & 0b00111111u) << 0);
+}
+
+constexpr char32_t utf8_to_32(uint32_t a, uint32_t b, uint32_t c, uint32_t d, uint32_t e, uint32_t f) {
+	return
+		((a & 0b00000011u) << 30) |
+		((b & 0b00111111u) << 24) |
+		((c & 0b00111111u) << 18) |
+		((d & 0b00111111u) << 12) |
+		((e & 0b00111111u) << 6) |
+		((f & 0b00111111u) << 0);
+}
+
+constexpr char8_t foo[] = u8"é";
+
+constexpr auto bar0 = foo[0];
+constexpr auto bar1 = foo[1];
+
+constexpr auto bar = utf8_to_32(foo[0], foo[1]);
+
+struct unicode_character {
+	char32_t code_point;
+
+	constexpr size_t utf8_size() const noexcept {
+		return (
+			code_point < 0x000080 ? 1 :
+			code_point < 0x000800 ? 2 :
+			code_point < 0x100000 ? 3 :
+			code_point < 0x110000 ? 4 :
+			0
+		);
+	}
+
+	template <typename Range>
+	requires (std::ranges::sized_range<Range>)
+	constexpr size_t write_utf8(Range&& range) {
+		using range_t = std::remove_reference_t<Range>;
+		using value_t = std::ranges::range_value_t<range_t>;
+		size_t required_size = utf8_size();
+		if (required_size < std::ranges::size(range)) {
+			return (0);
+		}
+		auto it = std::ranges::begin(range);
+		switch (required_size) {
+			default:
+			case 0:
+				return (0);
+
+			case 1:
+				*it = static_cast<value_t>(code_point);
+				return (1);
+
+			case 2:
+				*it = static_cast<value_t>((code_point & 0b00011111) | 0b11000000);
+				++it;
+				*it = static_cast<value_t>((code_point & 0b00111111) | 0b10000000);
+				return (1);
+
+			case 3:
+				*it = static_cast<value_t>((code_point & 0b00001111) | 0b11100000);
+				++it;
+				*it = static_cast<value_t>((code_point & 0b00111111) | 0b10000000);
+				++it;
+				*it = static_cast<value_t>((code_point & 0b00111111) | 0b10000000);
+				return (1);
+
+			case 4:
+				*it = static_cast<value_t>((code_point & 0b00000111) | 0b11110000);
+				++it;
+				*it = static_cast<value_t>((code_point & 0b00111111) | 0b10000000);
+				++it;
+				*it = static_cast<value_t>((code_point & 0b00111111) | 0b10000000);
+				++it;
+				*it = static_cast<value_t>((code_point & 0b00111111) | 0b10000000);
+				return (1);
+		}
+	}
+
+	constexpr char to_cube() const noexcept {
+		return (unicode_to_cube(code_point));
+	}
+
+	static constexpr size_t utf8_character_size(char8 first_byte) noexcept {
+		switch (std::countl_one(static_cast<uint8>(first_byte))) {
+			case 0:
+				return (1);
+			case 2:
+				return (2);
+			case 3:
+				return (3);
+			case 4:
+				return (4);
+			default:
+				return (0);
+		}
+	}
+
+	static constexpr unicode_character from_utf8(std::span<char8 const> buf) noexcept {
+		int bits = std::countl_one(static_cast<uint8>(buf[0]));
+
+		switch (bits) {
+			case 0:
+				return {buf[0]};
+
+			case 2: // 110xxxxx 10xxxxxx
+				return { buf.size() < 2 ? U'\0' : utf8_to_32(buf[0], buf[1]) };
+
+			case 3: // 1110xxxx 10xxxxxx 10xxxxxx
+				return { buf.size() < 3 ? U'\0' : utf8_to_32(buf[0], buf[1], buf[2]) };
+
+			case 4: // 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+				return { buf.size() < 4 ? U'\0' : utf8_to_32(buf[0], buf[1], buf[2], buf[4]) };
+
+			default:
+				return {};
+		}
+	}
 };
 
 template <std::input_iterator InIt, typename OutIt> requires (

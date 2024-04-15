@@ -8,9 +8,9 @@ SET(ENGINE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/engine/command.cpp
     ${CMAKE_CURRENT_LIST_DIR}/engine/console.cpp
     ${CMAKE_CURRENT_LIST_DIR}/engine/dynlight.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/engine/engine.cpp
     ${CMAKE_CURRENT_LIST_DIR}/engine/grass.cpp
     ${CMAKE_CURRENT_LIST_DIR}/engine/light.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/engine/main.cpp
     #${CMAKE_CURRENT_LIST_DIR}/engine/master.cpp
     ${CMAKE_CURRENT_LIST_DIR}/engine/material.cpp
     ${CMAKE_CURRENT_LIST_DIR}/engine/menus.cpp
@@ -109,8 +109,7 @@ set(GAME_HEADERS
     ${CMAKE_CURRENT_LIST_DIR}/game/extinfo.h
     ${CMAKE_CURRENT_LIST_DIR}/game/game.h
 )
-add_executable(penteract
-    WIN32
+add_library(penteract_lib
     ${ENGINE_HEADERS}
     ${SHARED_HEADERS}
     ${GAME_HEADERS}
@@ -131,37 +130,47 @@ source_group(TREE ${CMAKE_CURRENT_LIST_DIR}
         ${GAME_SOURCES}
 )
 
-set_target_properties(penteract
+set_target_properties(penteract_lib
     PROPERTIES
         LINKER_LANGUAGE CXX
 )
 
 find_package(OpenGL REQUIRED)
 
-target_compile_features(penteract PUBLIC cxx_std_20)
+target_compile_features(penteract_lib PUBLIC cxx_std_20)
 
-target_include_directories(penteract PRIVATE ${CMAKE_CURRENT_LIST_DIR}/engine)
-target_include_directories(penteract PRIVATE ${CMAKE_CURRENT_LIST_DIR}/game)
-target_include_directories(penteract PRIVATE ${CMAKE_CURRENT_LIST_DIR}/shared)
+target_include_directories(penteract_lib PRIVATE ${CMAKE_CURRENT_LIST_DIR}/engine)
+target_include_directories(penteract_lib PRIVATE ${CMAKE_CURRENT_LIST_DIR}/game)
+target_include_directories(penteract_lib PRIVATE ${CMAKE_CURRENT_LIST_DIR}/shared)
 
-target_precompile_headers(penteract PRIVATE
+target_precompile_headers(penteract_lib PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/engine/engine.h
     ${CMAKE_CURRENT_LIST_DIR}/shared/cube.h
 )
 
 # target_link_libraries(Octahedron PUBLIC fmt)
-target_link_libraries(penteract PUBLIC Octahedron)
-target_link_libraries(penteract PUBLIC enet)
-target_link_libraries(penteract PUBLIC zlib)
-target_link_libraries(penteract PUBLIC ${OPENGL_LIBRARIES})
+target_link_libraries(penteract_lib PUBLIC Octahedron)
+target_link_libraries(penteract_lib PUBLIC enet)
+target_link_libraries(penteract_lib PUBLIC zlib)
+target_link_libraries(penteract_lib PUBLIC ${OPENGL_LIBRARIES})
 
 #target_compile_options(penteract PUBLIC $<$<CONFIG:RelWithDebInfo>:-fsanitize=address>)
 #target_link_options(penteract PUBLIC <$<CONFIG:RelWithDebInfo>:-fsanitize=address>)
 
 
 if(WIN32)
-  target_link_libraries(penteract PUBLIC wsock32 ws2_32)
+  target_link_libraries(penteract_lib PUBLIC wsock32 ws2_32)
 endif()
+
+add_executable(penteract
+    ${CMAKE_CURRENT_LIST_DIR}/engine/main.cpp
+)
+
+target_include_directories(penteract PRIVATE ${CMAKE_CURRENT_LIST_DIR}/engine)
+target_include_directories(penteract PRIVATE ${CMAKE_CURRENT_LIST_DIR}/game)
+target_include_directories(penteract PRIVATE ${CMAKE_CURRENT_LIST_DIR}/shared)
+
+target_link_libraries(penteract PUBLIC penteract_lib)
 
 add_custom_command(TARGET penteract POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_RUNTIME_DLLS:penteract>" "$<TARGET_FILE_DIR:penteract>"

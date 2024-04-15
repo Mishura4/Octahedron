@@ -1,5 +1,6 @@
 #include "gz_file_stream.h"
 #include "tools/math.h"
+#include <fmt/ranges.h>
 
 #include <cassert>
 

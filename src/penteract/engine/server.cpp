@@ -718,7 +718,7 @@ void localconnect()
 #define IDI_ICON1 1
 
 static string apptip = "";
-static HINSTANCE appinstance = NULL;
+HINSTANCE appinstance = NULL;
 static ATOM wndclass = 0;
 static HWND appwindow = NULL, conwindow = NULL;
 static HICON appicon = NULL;
@@ -921,7 +921,7 @@ static void setupwindow(const char *title)
     if(!setupsystemtray(WM_APP)) fatal("failed adding to system tray");
 }
 
-static char *parsecommandline(const char *src, vector<char *> &args)
+char *parsecommandline(const char *src, vector<char *> &args)
 {
     char *buf = new char[strlen(src) + 1], *dst = buf;
     for(;;)
@@ -939,25 +939,6 @@ static char *parsecommandline(const char *src, vector<char *> &args)
     }
     args.add(NULL);
     return buf;
-}
-
-
-int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR szCmdLine, int sw)
-{
-    vector<char *> args;
-    char *buf = parsecommandline(GetCommandLine(), args);
-    appinstance = hInst;
-#ifdef STANDALONE
-    int standalonemain(int argc, char **argv);
-    int status = standalonemain(args.length()-1, args.getbuf());
-    #define main standalonemain
-#else
-    SDL_SetMainReady();
-    int status = SDL_main(args.length()-1, args.getbuf());
-#endif
-    delete[] buf;
-    exit(status);
-    return 0;
 }
 
 void logoutfv(const char *fmt, va_list args)

@@ -42,16 +42,16 @@ struct ref {
 	octahedron::ring<char, 16> ring;
 	std::array<char, 32> buf;
 
-	if (ring.write("abcedf", 6) != 6) {
+	if (ring.write("abcdef", 6) != 6) {
 		self.fail("failed to write [0-6( characters");
 	}
-	if (ring.write(":)", 2) != 2) {
+	if (ring.write(":)") != 2) {
 		self.fail("failed to write [6-8( characters");
 	}
 	if (ring.read(buf, 3) < 3 || std::strncmp(buf.data(), "abc", 3) != 0) {
 		self.fail("failed to read [0-3(");
 	}
-	if (ring.read(buf, 3) < 3 || std::strncmp(buf.data(), "edf", 3) != 0) {
+	if (ring.read(buf, 3) < 3 || std::strncmp(buf.data(), "def", 3) != 0) {
 		self.fail("failed to read [3-6(");
 	}
 	if (ring.read(buf, 3) != 2 || std::strncmp(buf.data(), ":)", 2) != 0) {
@@ -61,15 +61,17 @@ struct ref {
 		self.fail("size() failed to give 0 after writing and reading 8");
 	}
 
+	ring.write("abcdef:)");
+	ring.read(buf, 6);
 	if (ring.write("octahedron", 10) != 10) {
 		self.fail("failed to write wrap-around [8-2(");
 	}
-	if (ring.read(buf, 10) != 10 || std::strncmp(buf.data(), "octahedron", 10) != 0) {
-		self.fail("failed to read wrap-around [8-2(");
+	if (ring.read(buf, 12) != 12 || std::strncmp(buf.data(), ":)octahedron", 12) != 0) {
+		self.fail("failed to read wrap-around [6-2(");
 	}
 
 	if (ring.size() != 0) {
-		self.fail("size() failed to give 0 after writing and reading wrap-around 10");
+		self.fail("size() failed to give 0 after writing and reading wrap-around 12");
 	}
 	if (ring.write("sod hype, sod hype", 18) != ring.capacity()) {
 		self.fail("writing > capacity failed to write only capacity");

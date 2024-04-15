@@ -1,9 +1,9 @@
 // the interface the game uses to access the engine
 
-#include "../../main/io/serializer.h"
-
 #include "engine/engine.h"
 #include "io/file_stream.h"
+
+#include "io/serializer.h"
 
 using octahedron::g_engine;
 

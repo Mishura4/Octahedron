@@ -6,6 +6,7 @@
 #include <span>
 #include <cstring>
 #include <memory>
+#include <ranges>
 
 #include <tools/math.h>
 #include <tools/util.h>
@@ -344,12 +345,20 @@ public:
 			if (empty())
 				return (0);
 			if (_get_idx() + to_read < Capacity) { // contiguous
-				return (_do_read_unchecked(std::forward<Range>(rng), to_read));
+				size_t ret = _do_read_unchecked(std::forward<Range>(rng), to_read);
+
+				if (empty()) {
+					_reset();
+				}
+				return ret;
 			}
 			// start + to_read > Size: wraps around
 			size_t first_pass = _do_read_unchecked(std::forward<Range>(rng), Capacity - _get_idx());
 
 			_do_read_unchecked(std::forward<Range>(rng) | std::views::drop(first_pass), to_read - first_pass);
+			if (empty()) {
+				_reset();
+			}
 			return (to_read);
 		} else {
 			auto it = std::ranges::begin(rng);
@@ -359,6 +368,9 @@ public:
 				*it = std::move(front());
 				pop_front();
 				++i;
+			}
+			if (empty()) {
+				_reset();
 			}
 			return (i);
 		}
@@ -449,6 +461,9 @@ public:
 				pop_front();
 				++i;
 			}
+			if (empty()) {
+				_reset();
+			}
 			return (i);
 		}
 	}
@@ -476,6 +491,147 @@ public:
 				++i;
 			}
 			return (i);
+		}
+	}
+
+	bool is_contiguous() const noexcept {
+		return (_get_idx() + _get_size() <= capacity());
+	}
+
+	std::span<T const> data_first() const noexcept {
+		size_t idx = _get_idx();
+		size_t sz = _get_size();
+		return {_array() + idx, idx + sz <= capacity() ? sz : idx + (capacity() - idx)};
+	}
+
+	std::span<T> data_first() noexcept {
+		size_t idx = _get_idx();
+		size_t sz = _get_size();
+		return {_array() + idx, idx + sz <= capacity() ? sz : idx + (capacity() - idx)};
+	}
+
+	std::span<T const> data_second() const noexcept {
+		size_t end = _get_idx() + _get_size();
+		if (end <= capacity())
+			return {};
+		return {_array(), end - capacity()};
+	}
+
+	std::span<T> data_second() noexcept {
+		size_t end = _get_idx() + _get_size();
+		if (end <= capacity())
+			return {};
+		return {_array(), end - capacity()};
+	}
+
+	std::pair<std::span<T>, std::span<T>> data() noexcept {
+		size_t idx = _get_idx();
+		size_t sz = _get_size();
+		size_t end = idx + sz;
+		if (end <= capacity()) {
+			return {
+				{_array() + idx, sz},
+				{}
+			};
+		}
+		return {
+			_array() + idx, capacity() - idx,
+			_array(), end - capacity()
+		};
+	}
+
+	std::pair<std::span<T const>, std::span<T const>> data() const noexcept {
+		size_t idx = _get_idx();
+		size_t sz = _get_size();
+		size_t end = idx + sz;
+		if (end <= capacity()) {
+			return {
+				{_array() + idx, sz},
+				{}
+			};
+		}
+		return {
+			_array() + idx, capacity() - idx,
+			_array(), end - capacity()
+		};
+	}
+
+	size_t discard(size_t max) noexcept(std::is_nothrow_destructible_v<T>) {
+		size_t my_size = _get_size();
+
+		if (my_size == 0)
+			return (0);
+		size_t discarding = min(max, my_size);
+		_destroy(_get_idx(), min(max, discarding));
+		size_t my_idx = _get_idx();
+		my_idx += discarding;
+		if (my_idx >= capacity())
+			my_idx -= capacity();
+		_set_idx(my_idx);
+		_set_size(my_size - discarding);
+		return (discarding);
+	}
+
+	template <typename U>
+		requires (requires (U t, T* buf, size_t sz) { { t.read(buf, sz) } -> std::integral; })
+	constexpr auto accept(U&& io_reader, size_t max_size)
+		requires (implicit_lifetime_type<std::remove_all_extents_t<T>> && std::is_trivially_copyable_v<T>) {
+		size_t my_end = _get_end_idx();
+		size_t to_read = std::min(capacity() - my_end, max_size);
+		using result_type = decltype(io_reader.read(_array(), max_size));
+		if constexpr (!Overwrite) {
+			max_size = min(capacity() - _get_size(), max_size);
+			if (max_size == 0) {
+				return (result_type{});
+			}
+		}
+		if (my_end + to_read <= capacity()) {
+			auto res = io_reader.read(_array() + my_end, to_read);
+			if constexpr (std::is_signed_v<decltype(res)>) {
+				if (res < 0) {
+					return (result_type{});
+				}
+			}
+			_set_size(_get_size() + static_cast<size_t>(res));
+			return (res);
+		}
+		size_t max_read = capacity() - my_end;
+
+		auto res = io_reader.read(_array() + my_end, max_read);
+		decltype(res) total = {};
+		if (total < max_read) { // reader ran out
+			_set_size(_get_size() + total);
+			return (total);
+		} // more available presumably
+		if constexpr (Overwrite) {
+			while (total < max_size) {
+				my_end = 0;
+				to_read = std::min(capacity(), max_size - total);
+				res = io_reader.read(_array() + my_end, to_read);
+				if constexpr (std::is_signed_v<decltype(res)>) {
+					if (res < 0) {
+						return (result_type{});
+					}
+				}
+				total += (res);
+				if (res < to_read) {
+					return (total);
+				}
+			}
+			_set_size(min(_get_size() + total, capacity()));
+			return (total);
+		} else {
+			to_read = max_size - total;
+			if (to_read == 0) {
+				return (result_type{});
+			}
+			res = io_reader.read(_array() + my_end, to_read);
+			if constexpr (std::is_signed_v<decltype(res)>) {
+				if (res < 0) {
+					return (result_type{});
+				}
+			}
+			return (total + res);
 		}
 	}
 
@@ -898,6 +1054,12 @@ private:
 		return (static_cast<self const *>(this));
 	}
 
+	void _reset() noexcept {
+		assert(empty());
+
+		_set_idx(0);
+	}
+
 	/**
 	 * \brief Underlying buffer. **Never** do any operation on this, use _array().
 	 */
@@ -1095,8 +1257,10 @@ public:
  * \copydoc basic_ring
  */
 template <typename T, size_t Capacity, bool Overwrite>
-requires (sizeof(T) == 1)
+requires (std::is_trivially_copyable_v<T>)
 class basic_ring<T, Capacity, Overwrite> : public detail::basic_ring_common<T, Capacity, Overwrite> {
+	using view_type = std::conditional_t<character<T>, std::basic_string_view<std::remove_const_t<T>>, std::span<std::add_const_t<T>>>;
+
 public:
 	using detail::basic_ring_common<T, Capacity, Overwrite>::basic_ring_common;
 	using detail::basic_ring_common<T, Capacity, Overwrite>::operator=;
@@ -1118,8 +1282,19 @@ public:
 	 * \param max_read Maximum size to read.
 	 * \return size_t Number of Ts actually read.
 	 */
+	constexpr size_t read(T* buf, size_t max_read) noexcept (this->nothrow_extract) {
+		return (this->extract_range(std::span{buf, max_read}));
+	}
+
+	/**
+	 * \brief Read data from the buffer, consuming it.
+	 *
+	 * \param buf Span of Ts to read into.
+	 * \param max_read Maximum size to read.
+	 * \return size_t Number of Ts actually read.
+	 */
 	constexpr size_t read(std::span<T> buf, size_t max_read) noexcept (this->nothrow_extract) {
-		return (this->extract_range(buf, max_read));
+		return (this->extract_range(buf.size() > max_read ? buf.subspan(0, max_read) : buf));
 	}
 
 	/**
@@ -1139,8 +1314,19 @@ public:
 	 * \param max_read Maximum size to read.
 	 * \return size_t Number of Ts actually read.
 	 */
+	constexpr size_t peek(T* buf, size_t max_read) const noexcept (this->nothrow_peek) {
+		return (this->peek_range(std::span{buf, max_read}));
+	}
+
+	/**
+	 * \brief Peek data from the buffer without consuming it.
+	 *
+	 * \param buf Span of Ts to read into.
+	 * \param max_read Maximum size to read.
+	 * \return size_t Number of Ts actually read.
+	 */
 	constexpr size_t peek(std::span<T> buf, size_t max_read) const noexcept (this->nothrow_peek) {
-		return (this->peek_range(buf, max_read));
+		return (this->peek_range(buf.size() > max_read ? buf.subspan(0, max_read) : buf));
 	}
 
 	/**
@@ -1152,7 +1338,7 @@ public:
 	 * \param buf Data to write.
 	 * \return size_t Number of elements written.
 	 */
-	constexpr size_t write(std::span<std::add_const_t<T>> buf) noexcept (this->template nothrow_insert<std::add_const_t<T>&>) {
+	constexpr size_t write(view_type buf) noexcept (this->template nothrow_insert<std::add_const_t<T>&>) {
 		return (this->append_range(buf));
 	}
 
@@ -1166,8 +1352,22 @@ public:
 	 * \param max_write Maximum size to write.
 	 * \return size_t Number of elements written.
 	 */
-	constexpr size_t write(std::span<std::add_const_t<T>> buf, size_t max_write) noexcept (this->template nothrow_insert<std::add_const_t<T>&>) {
-		return (this->append_range(buf, max_write));
+	constexpr size_t write(std::add_const_t<T>* buf, size_t max_write) noexcept (this->template nothrow_insert<std::add_const_t<T>&>) {
+		return (this->append_range(std::span{buf, max_write}));
+	}
+
+	/**
+	 * \brief Write data to the buffer.
+	 *
+	 * If the template parameter Overwrite is set to true, writing past the end of the buffer will overwrite and push the start of the buffer.
+	 * Otherwise, nothing will be written.
+	 *
+	 * \param buf Data to write.
+	 * \param max_write Maximum size to write.
+	 * \return size_t Number of elements written.
+	 */
+	constexpr size_t write(view_type buf, size_t max_write) noexcept (this->template nothrow_insert<std::add_const_t<T>&>) {
+		return (this->append_range(buf.size() > max_write ? view_type{buf, max_write} : buf));
 	}
 };
 

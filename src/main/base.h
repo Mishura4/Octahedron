@@ -114,10 +114,10 @@ constexpr T& operator|=(T &lhs, const T &rhs) noexcept {
 	return (lhs);
 }
 
-constexpr inline auto noop = [](auto...) constexpr noexcept {};
+constexpr inline auto noop = [](auto&&...) constexpr noexcept {};
 
 template <auto R>
-constexpr inline auto noop_r = [](auto...) constexpr noexcept -> decltype(R) {
+constexpr inline auto noop_r = [](auto&&...) constexpr noexcept -> decltype(R) {
 	return (R);
 };
 
@@ -195,8 +195,20 @@ struct bit_set {
 		return (*this);
 	}
 
-	operator bool() const {
+	constexpr bool operator[](std::integral auto idx) const noexcept {
+		if constexpr (std::is_signed_v<decltype(idx)>) {
+			assert(idx >= 0);
+		}
+		assert(idx < sizeof(T) * 8);
+		return (static_cast<std::underlying_type_t<T>>(value) & (1 << idx)) != 0;
+	}
+
+	explicit operator bool() const {
 		return (value != 0);
+	}
+
+	friend auto format_as(const bit_set& set) noexcept {
+		return static_cast<std::underlying_type_t<T>>(set.value);
 	}
 
 	[[msvc::intrinsic]] operator T() const {
@@ -208,8 +220,7 @@ struct bit_set {
 	}
 
 	constexpr      bit_set(const bit_set &other) noexcept = default;
-	constexpr auto operator<=>(const bit_set &other) const noexcept requires(scoped_enum<T>) = default
-	;
+	constexpr auto operator<=>(const bit_set &other) const noexcept requires(scoped_enum<T>) = default;
 
 	std::underlying_type_t<T> value;
 };

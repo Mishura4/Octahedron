@@ -880,7 +880,11 @@ constexpr auto modetobitset = [](const char *mode) -> octahedron::bit_set<octahe
 stream *openrawfile(const char *filename, const char *mode)
 {
 		auto flags = modetobitset(mode);
-    auto path = g_engine->get_file_system()._resolve_path(filename, flags);
+    std::optional<std::filesystem::path> path;
+    if (g_engine)
+        path = g_engine->get_file_system()._resolve_path(filename, flags);
+    else
+        path = octahedron::file_system()._resolve_path(filename, flags);
     if (!path)
     return NULL;
 		if (flags & (octahedron::open_flags::APPEND | octahedron::open_flags::TRUNCATE))
