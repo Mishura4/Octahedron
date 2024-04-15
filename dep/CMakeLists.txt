@@ -5,6 +5,9 @@ set(ENET_STATIC true)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/fmt)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/boost-pfr)
 
+set(SDL2MIXER_MOD OFF)
+set(SDL2MIXER_WAVPACK OFF)
+
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/SDL)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/SDL_image)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/SDL_mixer)
