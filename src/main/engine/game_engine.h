@@ -1,5 +1,5 @@
-#ifndef OCTAHEDRON_ENGINE_H_
-#define OCTAHEDRON_ENGINE_H_
+#ifndef OCTAHEDRON_game_engine_H_
+#define OCTAHEDRON_game_engine_H_
 
 #include <array>
 #include <chrono>
@@ -49,20 +49,19 @@ private:
 using game_clock = clock<std::chrono::steady_clock>;
 using wall_clock = clock<std::chrono::system_clock>;
 
-class engine {
+class game_engine {
 public:
-
 	struct parameter {
 		std::string_view name;
 		std::string_view value;
 	};
 
-	engine(int ac, char *argv[]);
-	engine(const engine &) = delete;
-	engine(engine &&) = delete;
+	game_engine(int ac, char *argv[]);
+	game_engine(const game_engine &) = delete;
+	game_engine(game_engine &&) = delete;
 
-	engine& operator=(const engine &) = delete;
-	engine& operator=(engine &&) = delete;
+	game_engine& operator=(const game_engine &) = delete;
+	game_engine& operator=(game_engine &&) = delete;
 
 	const game_clock& get_game_clock() const noexcept;
 	const wall_clock& get_wall_clock() const noexcept;

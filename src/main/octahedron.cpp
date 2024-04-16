@@ -1,6 +1,6 @@
 #include "octahedron.h"
 
-#include "engine/engine.h"
+#include "engine/game_engine.h"
 
 bool octahedron::is_log_enabled(bit_set<log_level> level) noexcept {
 	return (g_engine->is_log_enabled(level));

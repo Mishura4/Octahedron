@@ -3,7 +3,7 @@
 #include "engine.h"
 
 #include "octahedron.h"
-#include "engine/engine.h"
+#include "engine/game_engine.h"
 
 #ifdef SDL_VIDEO_DRIVER_X11
 #include "SDL_syswm.h"
@@ -68,7 +68,7 @@ int main(int argc, char **argv)
     #endif
     #endif
     #endif
-    octahedron::engine engine(argc, argv);
+    octahedron::game_engine engine(argc, argv);
 
     int dedicated = 0;
     char *load = NULL, *initscript = NULL;

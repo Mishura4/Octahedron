@@ -10,11 +10,11 @@
 namespace octahedron
 {
 
-class engine;
+class game_engine;
 class game_engine;
 
 // The main way a game will access the non-graphics part of the engine
-inline protected_ptr<engine> g_engine;
+inline protected_ptr<game_engine> g_engine;
 
 // The main way a game will access the whole engine
 // Is nullptr if the engine is built without graphics, see `engine` instead

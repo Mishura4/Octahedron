@@ -1,10 +1,9 @@
-#include "engine.h"
 #include "octahedron.h"
 
 #include <regex>
 #include <variant>
 
-#include "engine/engine.h"
+#include "engine/game_engine.h"
 
 #include <iostream>
 
@@ -291,7 +290,7 @@ auto parse_cmd_options(int ac, char *av[]) {
 
 #include "io/file_stream.h"
 
-void engine::set_log_file(std::string_view file) {
+void game_engine::set_log_file(std::string_view file) {
 	auto stream = _filesystem.open(file, open_flags::OUTPUT | open_flags::TRUNCATE);
 
 	if (!stream) {
@@ -302,11 +301,11 @@ void engine::set_log_file(std::string_view file) {
 	_logger.log(log_level::BASIC, "log file set to {}", file);
 }
 
-void engine::log(bit_set<log_level> level, std::string_view line) {
+void game_engine::log(bit_set<log_level> level, std::string_view line) {
 	_logger.log(log_level{level}, line);
 }
 
-engine::engine(int argc, char *argv[]) {
+game_engine::game_engine(int argc, char *argv[]) {
 	if (g_engine != nullptr)
 		throw exception("Another instance of the engine is already running");
 
@@ -325,7 +324,7 @@ engine::engine(int argc, char *argv[]) {
 	}
 }
 
-void engine::seedRNG() {
+void game_engine::seedRNG() {
 	auto seed = _get_seed_base();
 
 	_mt64 = std::mt19937_64{seed};
@@ -342,31 +341,31 @@ void engine::seedRNG() {
 	};
 }
 
-auto engine::get_file_system() const noexcept -> const file_system& {
+auto game_engine::get_file_system() const noexcept -> const file_system& {
 	return (_filesystem);
 }
 
-auto engine::get_file_system() noexcept -> file_system& {
+auto game_engine::get_file_system() noexcept -> file_system& {
 	return (_filesystem);
 }
 
-void engine::_parse_args(std::span<const char *const> args) {}
+void game_engine::_parse_args(std::span<const char *const> args) {}
 
-auto engine::_get_seed_base() const noexcept -> size_t {
+auto game_engine::_get_seed_base() const noexcept -> size_t {
 	auto day_time = wall_clock::type::now();
 	auto game_time = game_clock::type::now();
 
 	return (day_time.time_since_epoch().count() ^ game_time.time_since_epoch().count());
 }
 
-auto engine::get_game_clock() const noexcept -> const game_clock& {
+auto game_engine::get_game_clock() const noexcept -> const game_clock& {
 	return (_game_clock);
 }
 
-auto engine::get_wall_clock() const noexcept -> const wall_clock& {
+auto game_engine::get_wall_clock() const noexcept -> const wall_clock& {
 	return (_day_clock);
 }
 
-bool engine::is_log_enabled(bit_set<log_level> logLevel) const noexcept {
+bool game_engine::is_log_enabled(bit_set<log_level> logLevel) const noexcept {
 	return (_logger.is_log_enabled(logLevel));
 }

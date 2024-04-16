@@ -1,6 +1,6 @@
 // the interface the game uses to access the engine
 
-#include "engine/engine.h"
+#include "engine/game_engine.h"
 #include "io/file_stream.h"
 
 #include "io/serializer.h"

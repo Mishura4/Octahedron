@@ -3,7 +3,7 @@ add_library(Octahedron)
 set(OCTAHEDRON_HEADERS
         ${CMAKE_CURRENT_LIST_DIR}/octahedron.h
         ${CMAKE_CURRENT_LIST_DIR}/base.h
-        ${CMAKE_CURRENT_LIST_DIR}/engine/engine.h
+        ${CMAKE_CURRENT_LIST_DIR}/engine/game_engine.h
         ${CMAKE_CURRENT_LIST_DIR}/tools/protected_ptr.h
         ${CMAKE_CURRENT_LIST_DIR}/tools/math.h
         ${CMAKE_CURRENT_LIST_DIR}/tools/string_literal.h
@@ -23,7 +23,7 @@ set(OCTAHEDRON_HEADERS
 
 set(OCTAHEDRON_SOURCES
         ${CMAKE_CURRENT_LIST_DIR}/octahedron.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/engine/engine.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/engine/game_engine.cpp
         ${CMAKE_CURRENT_LIST_DIR}/io/file_system.cpp
         ${CMAKE_CURRENT_LIST_DIR}/io/io_stream.cpp
         ${CMAKE_CURRENT_LIST_DIR}/io/file_stream.cpp
